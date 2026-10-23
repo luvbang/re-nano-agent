@@ -1,0 +1,37 @@
+# 单 VPS 拓扑：Internet → Caddy(80/443, 自动 TLS) → app:8000 → SQLite + workspace(/data)
+#
+# 真实域名：把 AGENTD_DOMAIN 设成解析到本机的域名，Caddy 自动申请证书。
+# 本地/内网：域名位置写 localhost 或 IP，并给下面的 site 块加 `tls internal`（自签）。
+
+{
+	admin off
+	email {$ACME_EMAIL:admin@example.com}
+}
+
+{$AGENTD_DOMAIN:localhost} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Cross-Origin-Opener-Policy "same-origin"
+		-Server
+	}
+
+	# SSE 必须禁用响应缓冲，否则 delta 会被攒到连接结束才发
+	reverse_proxy app:8000 {
+		flush_interval -1
+		health_uri /healthz
+		health_interval 30s
+		transport http {
+			read_timeout 0
+		}
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

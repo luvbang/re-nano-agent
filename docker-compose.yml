@@ -1,0 +1,51 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    image: agentd:${AGENTD_IMAGE_TAG:-dev}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      AGENTD_ENV: prod
+      AGENTD_HOST: 0.0.0.0
+      AGENTD_PORT: "8000"
+      AGENTD_DATA_DIR: /data
+    volumes:
+      - agentd-data:/data
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request;assert urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).status == 200"
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    stop_grace_period: 30s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      AGENTD_DOMAIN: ${AGENTD_DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  agentd-data:
+  caddy-data:
+  caddy-config:
