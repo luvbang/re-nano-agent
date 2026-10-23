@@ -1,0 +1,9 @@
+# 统一换行：仓库内一律 LF（Windows 检出也不转 CRLF，避免 .sh 在容器里跑挂）
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.py text eol=lf
+*.sql text eol=lf
+Dockerfile text eol=lf
+*.png binary
+*.jpg binary
