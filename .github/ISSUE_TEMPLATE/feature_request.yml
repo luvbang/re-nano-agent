@@ -1,0 +1,42 @@
+name: Feature / scope change
+description: 新需求或范围变更（默认进 backlog，周五 scope 冻结评审）
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        规则：里程碑内的临时需求先进 backlog，周五评审；不接受"本周就要"。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的用户问题
+      description: 不要从方案写起，先写谁在什么场景下遇到什么问题
+    validations:
+      required: true
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: 目标里程碑
+      options: ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "v0.2", "backlog"]
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 优先级
+      options: ["P0 必须上线", "P1 上线后补", "P2 以后再说"]
+    validations:
+      required: true
+  - type: textarea
+    id: contract-impact
+    attributes:
+      label: 对 API / 契约的影响
+      description: 是否新增端点、字段、SSE 事件？契约只加不破，如有破坏性变更必须写明迁移方式
+    validations:
+      required: true
+  - type: textarea
+    id: alternative
+    attributes:
+      label: 不做的后果 / 替代方案
+    validations:
+      required: false

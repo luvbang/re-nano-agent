@@ -1,0 +1,46 @@
+name: Bug report
+description: 记录一个可复现的缺陷（含 request_id / run_id）
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        安全漏洞请不要开公开 issue，见 SECURITY 联系人。
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 现象
+      description: 期望行为 vs 实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      description: curl / SDK 片段 / 测试名。请贴出响应头 `X-Request-Id` 或 `run_id`。
+      placeholder: |
+        1. POST /v1/sessions/...
+        2. GET /v1/runs/{id}/events
+        3. 观察到 ...
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: 影响范围
+      options:
+        - API / SSE
+        - Runner / Provider
+        - 工具与安全
+        - 部署与运维
+        - SDK
+        - 文档
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: 环境
+      description: 版本 tag、OS、Python 版本、是否容器、模型 provider
+    validations:
+      required: true
