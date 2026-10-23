@@ -76,26 +76,55 @@ docker compose ps
 
 回滚：把 `AGENTD_IMAGE_TAG` 改回上一版本并 `docker compose up -d`（镜像需已推送；M5 落 CI 推送）。
 
-## 7. 本地验证同样的镜像（可选）
+## 7. 网络受限时用镜像源构建（无需改 daemon.json）
 
-```bash
-docker compose build
-docker compose up -d
-curl -sS http://127.0.0.1/healthz -H 'Host: localhost'
+Docker Hub / ghcr.io 直连不通（或很慢）时，在 `.env` 里加：
+
+```ini
+PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.12-slim-bookworm
+UV_IMAGE=ghcr.m.daocloud.io/astral-sh/uv:0.11.16
+CADDY_IMAGE=docker.m.daocloud.io/library/caddy:2-alpine
+UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-## 8. 已知待办（M5 补齐）
+`docker compose up -d --build` 会自动把这些值作为 build args 传进去。直接 `docker build` 时用：
+
+```bash
+docker build -f deploy/Dockerfile -t agentd:dev \
+  --build-arg PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.12-slim-bookworm \
+  --build-arg UV_IMAGE=ghcr.m.daocloud.io/astral-sh/uv:0.11.16 \
+  --build-arg UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple .
+```
+
+本地端口被占用时：`HTTP_PORT=18080 HTTPS_PORT=18443`（`AGENTD_DOMAIN=localhost` 时 Caddy 走内部 CA，自签证书，`curl -k` 访问）。
+
+## 8. 已在 M0 验证过的东西（可复现）
+
+```bash
+docker build -f deploy/Dockerfile -t agentd:m0 --build-arg ... .   # 成功，镜像 246MB
+docker run -d --name agentd-m0 -p 8124:8000 agentd:m0
+curl -s http://127.0.0.1:8124/healthz        # {"status":"ok",...}
+curl -s http://127.0.0.1:8124/readyz         # {"status":"ready","checks":{"db":"ok"}}
+docker exec agentd-m0 id                     # uid=10001(agentd) 非 root
+docker exec agentd-m0 ls /data               # agentd.db + workspace（迁移已应用）
+docker stop agentd-m0                        # 日志出现 app.stopped（优雅关闭）
+docker start agentd-m0                       # 重启后 readyz 仍 ok，数据未丢
+docker compose up -d --build                 # app healthy → caddy 启动
+curl -sk https://localhost:18443/healthz      # 经 Caddy 的 HTTPS 200，带安全响应头
+```
+
+## 9. 待补齐（M5）
 
 - 每日备份（SQLite Online Backup + workspace 打包）与 `restore.sh` 演练
 - `/metrics` 与告警
-- 镜像瘦身至 <400MB、CI 推送镜像到 registry
+- CI 推送镜像到 registry 并支持 `AGENTD_IMAGE_TAG` 回滚
 
-## 9. 本机部署链的当前状态（M0 记录）
+## 10. 尚未验收：真实 VPS 与域名
 
-M0 期间本机 Docker 守护进程未运行（`docker info` 连接 `dockerDesktopLinuxEngine` 失败）、也无可用 VPS/域名，因此：
+M0 期间没有可用 VPS/域名，因此以下两项目前**只有本地等价验证，没有线上证据**：
 
-- 已交付：`deploy/Dockerfile`、`deploy/entrypoint.sh`、`docker-compose.yml`、`deploy/Caddyfile`、本节部署手册
-- 已验证：`docker compose config` 语法通过；服务以 `uvicorn` 本机直跑通过 `/healthz`、`/readyz`、404 错误信封与 JSON 日志验收
-- **未验证**：真实镜像构建、容器非 root 运行、Caddy 自动 HTTPS、线上 `/healthz`
+- 线上 `https://<domain>/healthz`（本地已验证 Caddy HTTPS + 自签证书路径）
+- 「全新 VPS 30 分钟内从零部署」的实际耗时
 
-阻塞解除步骤：启动 Docker Desktop（或装 Docker Engine）→ `make up` → `curl http://127.0.0.1:8000/healthz`；有域名后按 §3–§5 完成线上验收。
+解除方式：拿到 VPS + 域名后按 §1–§5 执行一遍，记录实际耗时写回本节。
+

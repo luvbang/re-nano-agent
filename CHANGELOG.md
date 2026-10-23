@@ -15,10 +15,11 @@ M0：范围冻结 + 工程骨架 + 部署链。
 - HTTP 层：`/healthz`（存活，不碰 IO）、`/readyz`（DB 可用性）、统一错误信封（`invalid_request/unauthorized/forbidden/not_found/conflict/rate_limited/model_error/tool_error/timeout/internal`）、纯 ASGI request-id 中间件（响应头 + 错误体 + 日志贯穿）
 - 日志：JSON 单行输出，`request_id`/`run_id` 由 `ContextVar` 注入；关闭 uvicorn access log 避免重复
 - 存储：schema v1（projects/api_keys/sessions/messages/runs/run_events/tool_calls/usage_records/audit_logs/schema_version）、幂等迁移 runner（单事务 + 版本表）、`Database`（WAL、foreign_keys、busy_timeout、单写者）、`repositories.py`（project/api_key/session/run + 启动状态收敛）
-- 部署：多阶段非 root `deploy/Dockerfile`、`deploy/entrypoint.sh`（先迁移后起服务、exec 保证 SIGTERM 优雅退出）、`docker-compose.yml`（app + Caddy，仅暴露 80/443）、`deploy/Caddyfile`（自动 TLS、安全头、SSE 直通）、`Makefile` + `scripts/tasks.py`、`docs/deploy.md`
+- 部署：多阶段非 root `deploy/Dockerfile`（246MB，可 `--build-arg` 覆盖基础镜像/索引源以适配镜像加速）、`deploy/entrypoint.sh`（先迁移后起服务、exec 保证 SIGTERM 优雅退出）、`docker-compose.yml`（app + Caddy，仅暴露 80/443，镜像/端口可 env 覆盖）、`deploy/Caddyfile`（自动 TLS、安全头、SSE 直通）、`Makefile` + `scripts/tasks.py`、`docs/deploy.md`
 - 测试：27 个用例（健康检查/错误信封/request-id/迁移幂等与约束/Repository 往返/配置解析/日志格式）
+- 已验证（本机容器）：镜像构建、非 root（uid 10001）、容器内迁移落到 `/data`、`/healthz` `/readyz` 200、SIGTERM 优雅关闭、重启数据不丢、compose 全栈（Caddy HTTPS 200 + 安全响应头）
 
 ### Known issues
 
-- 线上 `/healthz` 未验收：本机 Docker 守护进程未运行且无 VPS/域名（详见 `docs/deploy.md` §9）
+- 线上 `https://<domain>/healthz` 未验收：无可用 VPS/域名（本机已用 Caddy 内部 CA 走通 HTTPS 链路；线上步骤见 `docs/deploy.md` §3–§5）
 - 远程仓库与 9 个 milestone 未创建：环境无 `gh`，GitHub connector 需重新授权；`scripts/create-milestones.sh` 已就绪

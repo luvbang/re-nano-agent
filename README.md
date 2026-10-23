@@ -34,6 +34,8 @@ make check        # ruff + mypy + pytest
 
 Windows 无 `make` 时用 `uv run python scripts/tasks.py <task>`，任务名与 Makefile 一致（`install/migrate/dev/serve/test/lint/type/check/up/down/deploy/tag`）。
 
+容器化部署（多阶段非 root 镜像 + Caddy 自动 TLS）见 [`docs/deploy.md`](docs/deploy.md)；Docker Hub / ghcr.io 直连不通时用 `--build-arg` 换镜像源（`.env.example` 有现成示例）。
+
 ## 常用命令
 
 | 任务 | 命令（make） | 命令（跨平台） |

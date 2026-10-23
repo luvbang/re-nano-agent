@@ -1,18 +1,26 @@
-# syntax=docker/dockerfile:1.7
 # 多阶段 + 非 root。构建上下文 = 仓库根目录：
 #   docker build -f deploy/Dockerfile -t agentd:dev .
+#
+# 网络受限（Docker Hub 直连不通）时用 build-arg 换基础镜像/索引源，无需改 daemon.json：
+#   docker build -f deploy/Dockerfile -t agentd:dev \
+#     --build-arg PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.12-slim-bookworm \
+#     --build-arg UV_IMAGE=ghcr.m.daocloud.io/astral-sh/uv:0.11.16 \
+#     --build-arg UV_INDEX_URL=https://pypi.org/simple .
 
-ARG PYTHON_VERSION=3.12
-ARG UV_VERSION=0.11.16
+ARG PYTHON_IMAGE=python:3.12-slim-bookworm
+ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.16
 
 # ---------- 构建阶段：只装依赖 + 项目本体，不带走构建工具 ----------
-FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv-bin
-FROM python:${PYTHON_VERSION}-slim-bookworm AS builder
+FROM ${UV_IMAGE} AS uv-bin
+
+FROM ${PYTHON_IMAGE} AS builder
 
 COPY --from=uv-bin /uv /usr/local/bin/uv
+ARG UV_INDEX_URL=https://pypi.org/simple
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    UV_PYTHON_DOWNLOADS=never
+    UV_PYTHON_DOWNLOADS=never \
+    UV_INDEX_URL=${UV_INDEX_URL}
 
 WORKDIR /app
 COPY pyproject.toml README.md ./
@@ -21,7 +29,7 @@ RUN uv venv /opt/venv \
     && uv pip install --python /opt/venv/bin/python --no-cache .
 
 # ---------- 运行阶段：非 root、只带 venv ----------
-FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
+FROM ${PYTHON_IMAGE} AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:$PATH" \

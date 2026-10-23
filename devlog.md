@@ -38,11 +38,13 @@
 
 **证据**
 - `ruff check .` → All checks passed；`mypy` → Success (28 files)；`pytest` → 27 passed
+- 新克隆验证：`git clone` 到临时目录 → `uv sync` → `tasks.py migrate`（applied 001_init）→ `tasks.py check` 全绿
 - `curl /healthz` → `{"status":"ok","version":"0.1.0","uptime_s":4.765}`，响应头带 `x-request-id`
 - `curl /readyz` → `{"status":"ready","checks":{"db":"ok"}}`
 - `curl /v1/nope` → 404 且 body 为错误信封、`request_id` 与响应头一致
 - `tasks.py migrate` 连跑两次：`applied=none`（幂等）
-- `docker compose config` 通过（合成后的服务/镜像/env 正确）
+- 镜像：`agentd:m0` 246MB；`docker exec id` → uid=10001（非 root）；`/data` 下 agentd.db + workspace；`docker stop` 日志出现 `app.stopped`；重启后 readyz 仍 ok
+- compose 全栈：app healthy → caddy 启动；`http→https` 308；`curl -sk https://localhost:18443/healthz` 200 且带 HSTS/X-Frame-Options 等头
 
 **明日 3 件（M1 D1）**
 1. `Provider` 协议 + OpenAI-compatible SSE 解析（delta/tool_calls/usage/finish_reason）
@@ -50,9 +52,9 @@
 3. 错误归一化（model_error/timeout/rate_limited）
 
 **阻塞**
-- Docker 守护进程未运行（`dockerDesktopLinuxEngine` 管道不存在）→ 镜像构建与容器验收未做
-- 无 VPS/域名 → 线上 `/healthz` 未验收
+- 无 VPS/域名 → 线上 `https://<domain>/healthz` 与「新机 30 分钟部署」耗时未验收
 - 无 `gh`，GitHub connector 需授权 → 远程仓库与 milestone 未创建
+- Docker Hub 直连不通（registry-1.docker.io 超时）→ 构建需带镜像源 build-arg（已参数化，`.env.example` 有示例）
 
 **技术债（只登记不修）**
 - `Database` 单连接把读也串行化了；M3 压测若发现读瓶颈，再拆读连接池

@@ -69,8 +69,10 @@ def configure_logging(level: str = "INFO", *, json_output: bool = True) -> None:
     else:
         handler.setFormatter(PlainFormatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
     root.handlers = [handler]
-    # uvicorn 自己装 handler 会破坏 JSON 单行结构，统一交给 root
+    # uvicorn 自己装 handler 会破坏 JSON 单行结构，统一交给 root；
+    # access 日志由 RequestIDMiddleware 输出（带 request_id），这里彻底关掉避免重复。
     for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
         logger = logging.getLogger(name)
         logger.handlers = []
         logger.propagate = True
+    logging.getLogger("uvicorn.access").disabled = True
