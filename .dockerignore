@@ -1,0 +1,15 @@
+.git
+.gitignore
+.venv
+var
+data
+tests
+docs
+examples
+**/__pycache__
+**/*.py[cod]
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.github
+node_modules

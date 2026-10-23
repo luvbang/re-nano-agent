@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+
+# 工具缓存
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# 运行时数据（绝不入库：DB、workspace 文件、日志）
+var/
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite3
+
+# 环境与密钥
+.env
+.env.*
+!.env.example
+
+# 编辑器 / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
