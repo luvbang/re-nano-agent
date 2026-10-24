@@ -340,6 +340,56 @@ class IdempotencyRepository(Repository):
         )
 
 
+class AuditRepository(Repository):
+    """审计日志（M4 D3）：关键操作与工具调用；actor 用 key id / "admin"。"""
+
+    async def append(
+        self,
+        *,
+        action: str,
+        actor: str,
+        project_id: str | None = None,
+        target: str | None = None,
+        detail: dict[str, Any] | None = None,
+        ip: str | None = None,
+    ) -> None:
+        await self.db.execute(
+            "INSERT INTO audit_logs (id, project_id, actor, action, target, detail_json, ip)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                new_id("a"),
+                project_id,
+                actor,
+                action,
+                target,
+                json.dumps(detail or {}, ensure_ascii=False)[:2000],
+                ip,
+            ),
+        )
+
+    async def list_recent(
+        self,
+        *,
+        project_id: str | None = None,
+        action: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_id:
+            clauses.append("project_id = ?")
+            params.append(project_id)
+        if action:
+            clauses.append("action = ?")
+            params.append(action)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(min(limit, 500))
+        return await self.db.fetch_all(
+            f"SELECT * FROM audit_logs {where} ORDER BY created_at DESC, id DESC LIMIT ?",
+            tuple(params),
+        )
+
+
 class UsageRepository(Repository):
     async def record(
         self,

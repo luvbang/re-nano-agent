@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import sys
 from contextvars import ContextVar
 from datetime import UTC, datetime
@@ -25,6 +26,23 @@ _RESERVED = frozenset(
         "thread", "threadName", "taskName",
     }
 )
+
+
+#: 脱敏模式（M4 D3）：明文 key / bearer / 常见敏感字段赋值
+_REDACT_PATTERNS = (
+    re.compile(r"agd_[A-Za-z0-9_-]{8,}"),
+    re.compile(r"sk-[A-Za-z0-9_-]{8,}"),
+    re.compile(r"(?i)bearer\s+[A-Za-z0-9._-]{8,}"),
+    re.compile(r"""(?i)["']?(api[_-]?key|password|secret|token)["']?\s*[:=]\s*["']?[\S]{4,}"""),
+)
+_REDACTED = "[REDACTED]"
+
+
+def redact(text: str) -> str:
+    """打日志前过一遍：key/token/密码类明文一律替换。"""
+    for pattern in _REDACT_PATTERNS:
+        text = pattern.sub(_REDACTED, text)
+    return text
 
 
 class JsonFormatter(logging.Formatter):
@@ -49,7 +67,7 @@ class JsonFormatter(logging.Formatter):
             payload[key] = value
         if record.exc_info:
             payload["exc"] = self.formatException(record.exc_info)
-        return json.dumps(payload, ensure_ascii=False, default=str)
+        return redact(json.dumps(payload, ensure_ascii=False, default=str))
 
 
 class PlainFormatter(logging.Formatter):

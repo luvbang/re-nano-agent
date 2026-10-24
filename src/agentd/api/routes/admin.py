@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from fastapi import APIRouter
@@ -21,9 +22,42 @@ from agentd.api.schemas import (
     ProjectCreate,
     ProjectOut,
 )
-from agentd.storage.repositories import ApiKeyRepository, ProjectRepository
+from agentd.storage.repositories import (
+    ApiKeyRepository,
+    AuditRepository,
+    ProjectRepository,
+)
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
+
+
+@router.get(
+    "/audit",
+    summary="审计日志（管理员，倒序）",
+)
+async def list_audit(
+    auth: AdminAuth,
+    db: DbDep,
+    project_id: str | None = None,
+    action: str | None = None,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    del auth
+    rows = await AuditRepository(db).list_recent(
+        project_id=project_id, action=action, limit=limit
+    )
+    return [
+        {
+            "id": str(row["id"]),
+            "project_id": row["project_id"],
+            "actor": row["actor"],
+            "action": row["action"],
+            "target": row["target"],
+            "detail": json.loads(row["detail_json"] or "{}"),
+            "created_at": str(row["created_at"]),
+        }
+        for row in rows
+    ]
 
 
 def _project_out(row: dict[str, Any]) -> ProjectOut:
@@ -64,6 +98,10 @@ async def create_project(
         "UPDATE projects SET workspace_path = ? WHERE id = ?", (str(workspace), row["id"])
     )
     row["workspace_path"] = str(workspace)
+    await AuditRepository(db).append(
+        action="project.created", actor="admin", target=str(row["id"]),
+        detail={"name": body.name},
+    )
     return _project_out(row)
 
 
@@ -97,6 +135,10 @@ async def create_key(
         scopes="core",
         rate_limit_per_min=body.rate_limit_per_min,
     )
+    await AuditRepository(db).append(
+        action="key.created", actor="admin", project_id=body.project_id,
+        target=str(row["id"]), detail={"prefix": prefix, "name": body.name},
+    )
     return ApiKeyCreated(key=plaintext, detail=_key_out(row))
 
 
@@ -120,6 +162,10 @@ async def revoke_key(key_id: str, auth: AdminAuth, db: DbDep) -> ApiKeyOut:
         raise AppError(ErrorCode.NOT_FOUND, f"key 不存在：{key_id}")
     if row["revoked_at"] is None:
         await ApiKeyRepository(db).revoke(key_id)
+        await AuditRepository(db).append(
+            action="key.revoked", actor="admin", project_id=str(row["project_id"]),
+            target=key_id, detail={"prefix": row["key_prefix"]},
+        )
     fresh = await db.fetch_one("SELECT * FROM api_keys WHERE id = ?", (key_id,))
     assert fresh is not None
     return _key_out(fresh)

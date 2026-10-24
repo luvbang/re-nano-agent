@@ -31,7 +31,11 @@ from agentd.runtime.events import (
 from agentd.services.chat_service import ChatService
 from agentd.services.usage_service import UsageService
 from agentd.storage.db import Database
-from agentd.storage.repositories import RunEventRepository, RunRepository
+from agentd.storage.repositories import (
+    AuditRepository,
+    RunEventRepository,
+    RunRepository,
+)
 from agentd.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -122,6 +126,7 @@ class RunManager:
         self.project_concurrency = project_concurrency
         self.runner_kwargs = runner_kwargs or {}
         self.service = ChatService(db, usage_service=usage_service)
+        self.audit = AuditRepository(db)
         self.events = RunEventRepository(db)
         self.runs = RunRepository(db)
         self._active: dict[str, ActiveRun] = {}
@@ -167,6 +172,13 @@ class RunManager:
         # 未锁 → 立即占用（acquire 无等待，与 locked() 检查在同一事件循环步内原子）
         await lock.acquire()
         run = await self.service.create_run(session_id, project_id=project_id, model=self.model)
+        await self.audit.append(
+            action="run.created",
+            actor="api",
+            project_id=project_id,
+            target=str(run["id"]),
+            detail={"session_id": session_id},
+        )
         active = ActiveRun(
             run_id=str(run["id"]),
             session_id=session_id,
@@ -195,9 +207,12 @@ class RunManager:
                     runner_kwargs=self.runner_kwargs,
                 )
                 async for event in stream:
-                    await self._emit(active, event)
+                    await self._emit(active, event, project_id=project_id)
         except asyncio.CancelledError:
             await self.runs.finish(run_id, "cancelled", error={"code": "cancelled"})
+            await self.audit.append(
+                action="run.cancelled", actor="api", project_id=project_id, target=run_id
+            )
             await self._emit_raw(
                 active, "run.cancelled", {"run_id": run_id, "reason": "cancelled"}, persist=True
             )
@@ -223,8 +238,20 @@ class RunManager:
                 await queue.put(None)
             self._active.pop(run_id, None)
 
-    async def _emit(self, active: ActiveRun, event: RunEvent) -> None:
+    async def _emit(self, active: ActiveRun, event: RunEvent, *, project_id: str = "") -> None:
         name, payload = serialize_event(event)
+        if isinstance(event, ToolCompleted):
+            await self.audit.append(
+                action="tool.call",
+                actor=f"run:{active.run_id}",
+                project_id=project_id or None,
+                target=event.name,
+                detail={
+                    "tool_call_id": event.tool_call_id,
+                    "status": event.status,
+                    "duration_ms": event.duration_ms,
+                },
+            )
         if isinstance(event, RunStarted):
             payload["run_id"] = active.run_id
             payload["session_id"] = active.session_id
