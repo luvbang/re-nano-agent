@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import sys
 from collections.abc import AsyncIterator, Callable
 
@@ -64,6 +65,49 @@ def _cmd_serve(args: argparse.Namespace) -> int:
         log_config=None,  # 统一走 agentd.log 的 JSON 输出
         access_log=False,  # 访问日志由 RequestIDMiddleware 输出（带 request_id，不重复）
     )
+    return 0
+
+
+async def _cmd_purge(args: argparse.Namespace) -> int:
+    """删除一个 project 的全部数据（级联会话/run/消息/用量；审计保留）。
+
+    go-live 数据保留项的落地：删除前建议先跑 deploy/backup.sh。
+    """
+    settings = get_settings()
+    configure_logging(settings.log_level, json_output=False)
+    db = Database(
+        settings.db_path or settings.data_dir / "agentd.db",
+        busy_timeout_ms=settings.sqlite_busy_timeout_ms,
+    )
+    db.migrate()
+    project_id = args.project
+    project = await ProjectRepository(db).get(project_id)
+    if project is None:
+        print(f"project 不存在：{project_id}")
+        return 1
+    counts: dict[str, int] = {}
+    for table, sql in (
+        ("sessions", "SELECT COUNT(*) n FROM sessions WHERE project_id = ?"),
+        ("runs", "SELECT COUNT(*) n FROM runs WHERE project_id = ?"),
+        ("messages", "SELECT COUNT(*) n FROM messages WHERE session_id IN"
+            " (SELECT id FROM sessions WHERE project_id = ?)"),
+        ("usage_records", "SELECT COUNT(*) n FROM usage_records WHERE project_id = ?"),
+        ("tool_calls", "SELECT COUNT(*) n FROM tool_calls WHERE run_id IN"
+            " (SELECT id FROM runs WHERE project_id = ?)"),
+        ("run_events", "SELECT COUNT(*) n FROM run_events WHERE run_id IN"
+            " (SELECT id FROM runs WHERE project_id = ?)"),
+    ):
+        row = await db.fetch_one(sql, (project_id,))
+        counts[table] = int(row["n"]) if row else 0
+    plan = ", ".join(f"{table}={n}" for table, n in counts.items())
+    if not args.yes:
+        print(f"将删除 project {project_id}（{project['name']}）：{plan}")
+        print("审计日志保留（project_id 置空）。确认请加 --yes；建议先跑 deploy/backup.sh。")
+        return 2
+    deleted = await db.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+    db.close()
+    print(f"purged project={project_id} rows(cascaded)≈{plan} projects_deleted={deleted}")
+    print("提示：workspace 目录未动（如需彻底清理请手动删除其 workspace/<project_id>）。")
     return 0
 
 
@@ -234,6 +278,13 @@ def build_parser() -> argparse.ArgumentParser:
     chat.add_argument("--fake", action="store_true", help="离线脚本化 provider，无需 API key")
     chat.add_argument("--model", default=None, help="覆盖 AGENTD_LLM_MODEL")
     chat.set_defaults(func=_cmd_chat)
+
+    purge = sub.add_parser(
+        "purge", help="删除一个 project 的全部数据（级联；审计保留）"
+    )
+    purge.add_argument("--project", required=True, help="project id（p_ 开头）")
+    purge.add_argument("--yes", action="store_true", help="确认执行（不加则只打印计划）")
+    purge.set_defaults(func=lambda args: asyncio.run(_cmd_purge(args)))
 
     sub.add_parser("version", help="打印版本与配置").set_defaults(func=_cmd_version)
     return parser
