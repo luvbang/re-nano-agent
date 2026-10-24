@@ -51,3 +51,10 @@
 - **决策**：真逻辑写在 `scripts/tasks.py`（无第三方依赖），Makefile 只做薄壳转发。CI 用 `uv run`，本地用 `uv run python scripts/tasks.py`。
 - **代价**：两套入口要一起维护（但 Makefile 只有一行转发）。
 - **翻案条件**：全面改用 `uv run` + `just`，或 CI/开发环境统一到 Linux。
+
+## ADR-008 控制台前端：同仓同源，React+Vite+shadcn，消费 SSE 而非 WebSocket
+
+- **背景**：M6 需要一个 P1 的极简控制台（Playground/Keys/Usage/Status）；参考对象 nanobot WebUI 是 Vite + React 18 + TS + Tailwind + shadcn/ui，但其复杂度（WS 多路复用、19 通道投影、两阶段提交）来自我们不存在的需求。
+- **决策**：前端放仓库 `web/`，构建产物由 FastAPI StaticFiles 同源服务（用户零 Node 依赖）；栈与 nanobot 同族（React 18 + Vite + Tailwind + shadcn/ui）；数据面只消费自己的契约（REST + SSE）；SSE 用 fetch 流解析（EventSource 带不了 Authorization 头）；服务器状态 TanStack Query、流式状态页面内 hook、全局仅 auth key 一个 context。设计详见 `docs/web-architecture.md`。
+- **代价**：多一条 npm 构建链（CI 加 Node 步骤、Docker 加 builder 阶段，`NPM_REGISTRY` 参数化应对网络受限）；React 18 而非 19（与参考实现同代，升级留给 v0.2）。
+- **翻案条件**：M5 末评审若砍控制台（P1 降级），本文档与目录结构保留到 v0.2；若 v0.2 需要多 run 全局活动流/双向交互，重估 WebSocket（同时翻 ADR-002）。
