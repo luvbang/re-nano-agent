@@ -35,6 +35,7 @@ from agentd.storage.repositories import ProjectRepository, SessionRepository
 from agentd.tools.builtin import BUILTIN_TOOLS
 from agentd.tools.filesystem import filesystem_tools
 from agentd.tools.registry import ToolRegistry
+from agentd.tools.shell import ShellTool
 
 
 def _cmd_migrate(_: argparse.Namespace) -> int:
@@ -168,6 +169,14 @@ def _cmd_chat(args: argparse.Namespace) -> int:
             overflow_root=settings.workspace_root / ".runs",
         ).register_all(BUILTIN_TOOLS)
         registry.register_all(filesystem_tools(settings.workspace_root))
+        if settings.run_shell_enabled:
+            registry.register(
+                ShellTool(
+                    settings.workspace_root,
+                    allowlist=settings.run_shell_allowlist.split(","),
+                    timeout_s=settings.run_shell_timeout_s,
+                )
+            )
         context_builder = ContextBuilder(
             context_window=settings.llm_context_window, max_output=settings.llm_max_output
         )

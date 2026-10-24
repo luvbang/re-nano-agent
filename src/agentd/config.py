@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     run_timeout_s: float = Field(default=600.0, gt=0)
     run_tool_timeout_s: float = Field(default=60.0, gt=0)
 
+    # shell 工具（M2 D4）：默认关闭；开启 = 信任调用方
+    run_shell_enabled: bool = False
+    run_shell_allowlist: str = ""  # 逗号分隔的命令前缀，如 "git,python -m pytest"
+    run_shell_timeout_s: float = Field(default=30.0, gt=0)
+
     @model_validator(mode="after")
     def _resolve_paths(self) -> Settings:
         self.data_dir = self.data_dir.expanduser().resolve()
