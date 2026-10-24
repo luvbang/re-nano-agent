@@ -29,6 +29,7 @@ from agentd.runtime.events import (
     ToolStarted,
 )
 from agentd.services.chat_service import ChatService
+from agentd.services.usage_service import UsageService
 from agentd.storage.db import Database
 from agentd.storage.repositories import RunEventRepository, RunRepository
 from agentd.tools.registry import ToolRegistry
@@ -112,6 +113,7 @@ class RunManager:
         runner_kwargs: dict[str, Any] | None = None,
         global_concurrency: int = 8,
         project_concurrency: int = 4,
+        usage_service: UsageService | None = None,
     ) -> None:
         self.db = db
         self.provider = provider
@@ -119,7 +121,7 @@ class RunManager:
         self.model = model
         self.project_concurrency = project_concurrency
         self.runner_kwargs = runner_kwargs or {}
-        self.service = ChatService(db)
+        self.service = ChatService(db, usage_service=usage_service)
         self.events = RunEventRepository(db)
         self.runs = RunRepository(db)
         self._active: dict[str, ActiveRun] = {}

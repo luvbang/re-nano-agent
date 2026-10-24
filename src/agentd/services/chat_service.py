@@ -19,6 +19,7 @@ from typing import Any
 from agentd.providers.base import ChatMessage, Provider
 from agentd.runtime.events import RunCompleted, RunEvent, RunFailed, ToolCompleted, ToolStarted
 from agentd.runtime.runner import AgentRunner
+from agentd.services.usage_service import UsageService
 from agentd.storage.db import Database
 from agentd.storage.repositories import (
     MessageRepository,
@@ -32,8 +33,9 @@ from agentd.tools.registry import ToolRegistry
 
 
 class ChatService:
-    def __init__(self, db: Database) -> None:
+    def __init__(self, db: Database, *, usage_service: UsageService | None = None) -> None:
         self.db = db
+        self.usage_service = usage_service
         self.messages = MessageRepository(db)
         self.runs = RunRepository(db)
         self.sessions = SessionRepository(db)
@@ -153,11 +155,15 @@ class ChatService:
             await self.runs.finish(
                 str(run["id"]), "completed", input_tokens=usage_in, output_tokens=usage_out
             )
-            await self.usage.record(
-                project_id=project_id,
-                run_id=str(run["id"]),
-                model=str(run["model"] or "unknown"),
-                input_tokens=usage_in,
-                output_tokens=usage_out,
-            )
+            usage_kwargs: dict[str, object] = {
+                "project_id": project_id,
+                "run_id": str(run["id"]),
+                "model": str(run["model"] or "unknown"),
+                "input_tokens": usage_in,
+                "output_tokens": usage_out,
+            }
+            if self.usage_service is not None:
+                await self.usage_service.record(**usage_kwargs)  # type: ignore[arg-type]
+            else:
+                await self.usage.record(**usage_kwargs)  # type: ignore[arg-type]
         await self.sessions.touch(session_id)

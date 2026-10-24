@@ -61,6 +61,8 @@ class Settings(BaseSettings):
 
     # 平台 API（M3）
     admin_api_key: SecretStr = SecretStr("")  # env 管理员 key（引导用；DB admin scope 亦可）
+    # 价格表（M4）：JSON {"模型": {"input": $/1M, "output": $/1M}}；空=不记成本
+    llm_price_table: str = ""
     run_global_concurrency: int = Field(default=8, ge=1)
     run_project_concurrency: int = Field(default=4, ge=1)
     ratelimit_global_per_min: int = Field(default=240, ge=1)

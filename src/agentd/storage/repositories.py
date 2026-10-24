@@ -349,11 +349,12 @@ class UsageRepository(Repository):
         model: str,
         input_tokens: int,
         output_tokens: int,
+        cost_usd: float = 0.0,
     ) -> None:
         await self.db.execute(
-            "INSERT INTO usage_records (id, project_id, run_id, model, input_tokens, output_tokens)"
-            " VALUES (?, ?, ?, ?, ?, ?)",
-            (new_id("u"), project_id, run_id, model, input_tokens, output_tokens),
+            "INSERT INTO usage_records (id, project_id, run_id, model, input_tokens,"
+            " output_tokens, cost_usd) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (new_id("u"), project_id, run_id, model, input_tokens, output_tokens, cost_usd),
         )
 
     async def totals_by_project(self, project_id: str) -> dict[str, Any]:

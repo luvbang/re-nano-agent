@@ -63,11 +63,14 @@ def _build_run_manager(
         .register_all(BUILTIN_TOOLS)
         .register_all(filesystem_tools(settings.workspace_root))
     )
+    from agentd.services.usage_service import UsageService, parse_price_table
+
     return RunManager(
         db,
         provider,
         tools=tools,
         model=model,
+        usage_service=UsageService(db, parse_price_table(settings.llm_price_table)),
         runner_kwargs={
             "max_iterations": settings.run_max_iterations,
             "timeout_s": settings.run_timeout_s,

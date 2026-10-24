@@ -43,7 +43,8 @@ async def usage(
     rows = await db.fetch_all(
         f"SELECT {column} AS bucket, COUNT(*) AS runs,"
         " COALESCE(SUM(input_tokens),0) AS input_tokens,"
-        " COALESCE(SUM(output_tokens),0) AS output_tokens"
+        " COALESCE(SUM(output_tokens),0) AS output_tokens,"
+        " COALESCE(SUM(cost_usd),0) AS cost_usd"
         f" FROM usage_records WHERE {where} GROUP BY bucket ORDER BY bucket",
         tuple(params),
     )
@@ -55,6 +56,7 @@ async def usage(
                 "runs": int(row["runs"]),
                 "input_tokens": int(row["input_tokens"]),
                 "output_tokens": int(row["output_tokens"]),
+                "cost_usd": round(float(row["cost_usd"]), 6),
             }
             for row in rows
         ],
@@ -86,11 +88,12 @@ async def admin_stats(auth: AdminAuth, db: DbDep, settings: SettingsDep) -> dict
 async def _all_usage_totals(db: DbDep) -> dict[str, Any]:
     row = await db.fetch_one(
         "SELECT COUNT(*) AS n, COALESCE(SUM(input_tokens),0) AS input_tokens,"
-        " COALESCE(SUM(output_tokens),0) AS output_tokens FROM usage_records"
+        " COALESCE(SUM(output_tokens),0) AS output_tokens,"
+        " COALESCE(SUM(cost_usd),0) AS cost_usd FROM usage_records"
     )
     return {
         "records": int(row["n"]) if row else 0,
         "input_tokens": int(row["input_tokens"]) if row else 0,
         "output_tokens": int(row["output_tokens"]) if row else 0,
-        "cost_usd": 0.0,  # 价格表 M4 接入后填充
+        "cost_usd": round(float(row["cost_usd"]), 6) if row else 0.0,
     }
