@@ -4,6 +4,27 @@
 
 ## [Unreleased]
 
+## [v0.1.0-m4] - 2026-10-24
+
+M4：SDK + 计量 + 审计 + 压缩（真正可交付）。
+
+### Added
+
+- Python SDK `agentd-client`（uv workspace 成员）：AsyncClient/Client 双 API、SSE 流式迭代（断流自动 Last-Event-ID 重连，增量不重放）、错误信封→类型化异常（RateLimitError 携带 Retry-After）、retryable 指数退避自动重试、POST runs 自动 Idempotency-Key；`examples/sdk_quickstart.py`、`examples/sdk_sync.py`
+- 计量：`AGENTD_LLM_PRICE_TABLE`（JSON 模型→每百万 input/output 单价；坏配置退化空表不炸）；UsageService 成本双写 usage_records.cost_usd 与 runs.cost_usd；`/v1/usage`、`/v1/admin/stats` 回报 cost_usd
+- 审计：AuditRepository 接线 project.created / key.created（只记 prefix）/ key.revoked / run.created / run.cancelled / tool.call（名称+状态+时长）；`GET /v1/admin/audit?project_id=&action=&limit=`
+- 日志脱敏：JsonFormatter 输出前 redact（agd_/sk- key、Bearer、password/token/secret 赋值 → [REDACTED]）
+- 压缩 v1：HistoryCompactor——超预算 60% 且足够长时 LLM 摘要，写 role=summary checkpoint（meta.covers_up_to 记录覆盖序号，prompt 视图按序号取）；失败/太短/未超阈值回退 ContextBuilder 三级裁剪
+- `docs/quickstart.md`：外部 5 分钟接入文档（含计时与卡点记录栏，供真人验证）
+
+### DoD 证据
+
+- 176 测试全绿；SDK 同步端到端对真实 uvicorn 跑通；审计链路与脱敏有专测；压缩含失败回退用例
+
+### Known issues
+
+- SDK 未发布 PyPI；真人接入验证待执行（人工项）；压缩为同步触发
+
 ## [v0.1.0-m3] - 2026-10-24
 
 M3：平台 API + 鉴权 + 并发（对外的门面）。

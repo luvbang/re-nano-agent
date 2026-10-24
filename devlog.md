@@ -154,3 +154,34 @@
 - OpenAPI/SSE schema 快照测试未做 → M6 文档阶段补
 - SSE 心跳 15s 在测试中未显式覆盖（超时路径代码简单）
 - 限流器为进程内存态：重启清零（单实例可接受）；多实例需换 Redis（v0.2）
+
+---
+
+## 2026-10-24（M4 D1–D5 合并执行）
+
+**完成**
+- D1 SDK：sdk/agentd_client（uv workspace 成员）——AsyncClient（REST+SSE、断流 Last-Event-ID 自动重连）、Client 同步包装（后台事件循环线程 + 队列交接）、错误信封→类型化异常（RateLimitError 带 Retry-After）、retryable 指数退避、POST runs 自动幂等键；examples/ 两个示例
+- D2 计量：AGENTD_LLM_PRICE_TABLE（坏配置退化不炸）、UsageService 成本双写（usage_records + runs.cost_usd）、/v1/usage 与 admin/stats 回报 cost_usd
+- D3 审计与脱敏：AuditRepository + 接线（project/key/run/tool 全链路）、GET /v1/admin/audit（project/action 过滤）、JsonFormatter 输出前 redact（agd_/sk-/Bearer/敏感赋值四模式）
+- D4 压缩 v1：HistoryCompactor（>60% 预算且足够长→LLM 摘要，role=summary checkpoint 带 covers_up_to；失败回退 builder 裁剪）；修复 checkpoint 行尾追加导致保留尾巴被丢的缺陷（按 seq 取视图）
+- D5 文档：docs/quickstart.md（外部 5 分钟接入，含计时与卡点记录栏）
+
+**证据**
+- `ruff`/`mypy`（80 files）/`pytest` 全绿；176 测试（unit 87 + integration 50 + security 36 + sdk 6），分支覆盖 90%
+- SDK 同步端到端对真实 uvicorn 线程跑通；429 重试、401 不重试、Retry-After 透传有专测
+- 审计：project→key→run→tool 链路条目齐全，明文 key 不出现在审计 JSON 与日志输出
+- 压缩：超限摘要落库、二次不重复摘要、provider 失败不落库不炸 run
+
+**明日 3 件（M5 D1）**
+1. 镜像优化：HEALTHCHECK、层缓存复核、SIGTERM drain SSE 验证
+2. 备份/恢复：SQLite Online Backup + workspace 打包脚本、restore.sh、恢复演练
+3. 反代加固：CORS 白名单、请求体大小限制、安全头复核
+
+**阻塞（人工项，见 docs/human-checklist.md）**
+- D5 真人接入验证：需外部同事只拿 quickstart.md 接入并记录卡点（文档已备计时栏）
+- VPS 部署与真实模型 key（M1 起遗留）
+
+**技术债（只登记不修）**
+- SDK 未发 PyPI（quickstart 用 git subdirectory 安装）
+- 审计的 actor 粒度粗（"api"/"admin"/"run:<id>"，无终端用户身份——M3 契约本就只有 external_user_id）
+- 压缩摘要无异步预热（触发时同步等待一轮 LLM）

@@ -60,6 +60,14 @@ curl https://<你的域名>/healthz           # DoD：返回 {"status":"ok",...}
   `git push ssh://git@ssh.github.com:443/luvbang/re-nano-agent.git main`（主机密钥已入 known_hosts）。
 - Docker 构建若拉镜像超时：`.env` 里启用 daocloud 镜像源（`.env.example` 有全部示例）。
 
+## 4.5 真人接入验证（M4 D5，~30 分钟 + 当天修文档）
+
+找 1 位外部同事/朋友，只给 `docs/quickstart.md`（不给口头帮助）：
+
+- 记录开始/完成时间（文档末尾有计时栏）与每个卡点
+- 当天根据卡点修文档或代码，把耗时写回 devlog
+- 30 分钟内完成即达成 Go/No-Go 指标；超时也照实记录
+
 ## 完成后
 
 把各项结果（成功/失败/实际耗时）记进 `devlog.md` 对应日期条目；M2 起按 `docs/milestones.md` 继续。

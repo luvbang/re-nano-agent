@@ -8,7 +8,7 @@
 | M1 | Week 1 | Provider + Runner + 流式 | LLM 对话循环、工具调用回路、CLI demo | CLI 多轮+工具调用；取消不悬挂 | 完成（真实模型连通待人工验收） |
 | M2 | Week 2 | 会话持久化 + 上下文 + 真工具 + 安全 | 文件/shell/web 工具、路径/SSRF guard、重启续聊 | 安全测试全绿；重启恢复 | 完成（安全 36 例全绿，重启续聊已验证） |
 | M3 | Week 3 | 平台 API + 鉴权 + 并发 | sessions/runs/SSE/取消/限流/OpenAPI | curl 全流程；20 并发无 5xx | 完成（20 并发无 5xx；真实服务器冒烟待人工跑 smoke.sh） |
-| M4 | Week 4 | SDK + 计量 + 审计 + 压缩 | Python SDK、usage/audit、摘要压缩 | 外部人员 30 分钟接入 | 待开始 |
+| M4 | Week 4 | SDK + 计量 + 审计 + 压缩 | Python SDK、usage/audit、摘要压缩 | 外部人员 30 分钟接入 | 完成（真人接入验证待人工执行，quickstart.md 已备） |
 | M5 | Week 5 | 部署硬化 + 运维 + 可观测 | 非 root 镜像、备份恢复、metrics、安全复查 | 新机 30 分钟部署；备份演练 | 待开始 |
 | M6 | Week 6 | 控制台（P1）+ 文档 + RC | Playground/Key/Usage（可砍）、文档站、v0.1.0-rc | 3 个内测用户按文档接入 | 待开始 |
 | M7 | Week 7 | 内测迭代 + 稳定性 | 修 P0/P1、性能、故障演练、runbook | 连续 5 天无 P0；成功率>98% | 待开始 |
