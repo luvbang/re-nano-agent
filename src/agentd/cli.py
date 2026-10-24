@@ -33,6 +33,7 @@ from agentd.services.chat_service import ChatService
 from agentd.storage.db import Database
 from agentd.storage.repositories import ProjectRepository, SessionRepository
 from agentd.tools.builtin import BUILTIN_TOOLS
+from agentd.tools.filesystem import filesystem_tools
 from agentd.tools.registry import ToolRegistry
 
 
@@ -166,6 +167,7 @@ def _cmd_chat(args: argparse.Namespace) -> int:
             tool_timeout_s=settings.run_tool_timeout_s,
             overflow_root=settings.workspace_root / ".runs",
         ).register_all(BUILTIN_TOOLS)
+        registry.register_all(filesystem_tools(settings.workspace_root))
         context_builder = ContextBuilder(
             context_window=settings.llm_context_window, max_output=settings.llm_max_output
         )
