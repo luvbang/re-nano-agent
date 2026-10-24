@@ -26,8 +26,8 @@ jobs:
         run: uv run ruff check .
       - name: mypy
         run: uv run mypy
-      - name: pytest
-        run: uv run pytest -q
+      - name: pytest (coverage)
+        run: uv run pytest -q --cov=agentd --cov-report=term
 
   image:
     name: docker build

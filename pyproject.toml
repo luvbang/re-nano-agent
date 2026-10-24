@@ -69,3 +69,13 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-q"
 filterwarnings = ["error::DeprecationWarning:agentd.*"]
+
+[tool.coverage.run]
+source = ["agentd"]
+branch = true
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+]
