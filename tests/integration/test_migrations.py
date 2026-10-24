@@ -19,6 +19,7 @@ EXPECTED_TABLES = {
     "usage_records",
     "audit_logs",
     "schema_version",
+    "idempotency_keys",
 }
 
 
@@ -31,17 +32,17 @@ def db(tmp_path: Path) -> Iterator[Database]:
 
 def test_migrate_creates_schema(db: Database) -> None:
     applied = db.migrate()
-    assert applied == ["001_init"]
+    assert applied == ["001_init", "002_idempotency"]
 
     rows = db.query_all("SELECT name FROM sqlite_master WHERE type = 'table'")
     assert {row["name"] for row in rows} >= EXPECTED_TABLES
-    assert db.applied_versions() == ["001_init"]
+    assert db.applied_versions() == ["001_init", "002_idempotency"]
 
 
 def test_migrate_is_idempotent(db: Database) -> None:
     db.migrate()
     assert db.migrate() == []
-    assert db.applied_versions() == ["001_init"]
+    assert db.applied_versions() == ["001_init", "002_idempotency"]
 
 
 def test_wal_and_foreign_keys_enabled(db: Database) -> None:

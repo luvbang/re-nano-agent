@@ -55,9 +55,36 @@ class ChatService:
         tools: ToolRegistry | None = None,
         runner_kwargs: dict[str, Any] | None = None,
     ) -> AsyncGenerator[RunEvent, None]:
-        """在既有 session 里执行一轮对话并落库；事件流与 runner 相同。"""
-        run = await self.runs.create(session_id=session_id, project_id=project_id, model=model)
-        await self.runs.set_status(run["id"], "running")
+        """CLI 便捷入口：create_run + stream_run。"""
+        run = await self.create_run(session_id, project_id=project_id, model=model)
+        async for event in self.stream_run(
+            run,
+            user_input=user_input,
+            provider=provider,
+            tools=tools,
+            runner_kwargs=runner_kwargs,
+        ):
+            yield event
+
+    async def create_run(
+        self, session_id: str, *, project_id: str, model: str
+    ) -> dict[str, Any]:
+        """建 run 档（status=queued）。API 先拿到 run_id 返回 202，再后台执行。"""
+        return await self.runs.create(session_id=session_id, project_id=project_id, model=model)
+
+    async def stream_run(
+        self,
+        run: dict[str, Any],
+        *,
+        user_input: str,
+        provider: Provider,
+        tools: ToolRegistry | None = None,
+        runner_kwargs: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[RunEvent, None]:
+        """执行既有 run（queued → running → 终态）并落库；事件流与 runner 相同。"""
+        session_id = str(run["session_id"])
+        project_id = str(run["project_id"])
+        await self.runs.set_status(str(run["id"]), "running")
 
         async def persist(message: ChatMessage) -> None:
             call_id = message.get("tool_call_id")
@@ -129,7 +156,7 @@ class ChatService:
             await self.usage.record(
                 project_id=project_id,
                 run_id=str(run["id"]),
-                model=model,
+                model=str(run["model"] or "unknown"),
                 input_tokens=usage_in,
                 output_tokens=usage_out,
             )

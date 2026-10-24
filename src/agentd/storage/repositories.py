@@ -292,6 +292,54 @@ class ToolCallRepository(Repository):
         )
 
 
+class RunEventRepository(Repository):
+    """控制类事件（delta/reasoning.delta 不入库），SSE 回放的真相源。"""
+
+    async def append(self, run_id: str, seq: int, type_: str, payload: dict[str, Any]) -> None:
+        await self.db.execute(
+            "INSERT INTO run_events (run_id, seq, type, payload_json) VALUES (?, ?, ?, ?)",
+            (run_id, seq, type_, json.dumps(payload, ensure_ascii=False)),
+        )
+
+    async def list_after(self, run_id: str, *, after_seq: int = 0) -> list[dict[str, Any]]:
+        return await self.db.fetch_all(
+            "SELECT * FROM run_events WHERE run_id = ? AND seq > ? ORDER BY seq",
+            (run_id, after_seq),
+        )
+
+    async def max_seq(self, run_id: str) -> int:
+        row = await self.db.fetch_one(
+            "SELECT COALESCE(MAX(seq), 0) AS max_seq FROM run_events WHERE run_id = ?",
+            (run_id,),
+        )
+        return int(row["max_seq"]) if row else 0
+
+
+class IdempotencyRepository(Repository):
+    """创建 run 的 Idempotency-Key（5 分钟窗口）。"""
+
+    WINDOW_MINUTES = 5
+
+    async def find_run(self, key: str) -> str | None:
+        row = await self.db.fetch_one(
+            "SELECT run_id FROM idempotency_keys WHERE key = ?"
+            " AND created_at > datetime('now', ?)",
+            (key, f"-{self.WINDOW_MINUTES} minutes"),
+        )
+        return str(row["run_id"]) if row else None
+
+    async def bind(self, key: str, *, run_id: str, session_id: str) -> None:
+        # 顺手清理过期键（单实例量级小，无需独立任务）
+        await self.db.execute(
+            "DELETE FROM idempotency_keys WHERE created_at < datetime('now', ?)",
+            (f"-{2 * self.WINDOW_MINUTES} minutes",),
+        )
+        await self.db.execute(
+            "INSERT INTO idempotency_keys (key, run_id, session_id) VALUES (?, ?, ?)",
+            (key, run_id, session_id),
+        )
+
+
 class UsageRepository(Repository):
     async def record(
         self,
