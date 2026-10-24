@@ -28,12 +28,23 @@ COPY src ./src
 RUN uv venv /opt/venv \
     && uv pip install --python /opt/venv/bin/python --no-cache .
 
+# ---------- 控制台阶段：构建 web/dist（网络受限时用 NPM_REGISTRY 换源） ----------
+ARG NODE_IMAGE=node:22-alpine
+FROM ${NODE_IMAGE} AS console
+ARG NPM_REGISTRY=https://registry.npmjs.org/
+WORKDIR /web
+COPY web/package.json web/package-lock.json ./
+RUN npm config set registry ${NPM_REGISTRY} && npm ci --no-audit --no-fund
+COPY web ./
+RUN npm run build
+
 # ---------- 运行阶段：非 root、只带 venv ----------
 FROM ${PYTHON_IMAGE} AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:$PATH" \
     AGENTD_ENV=prod \
+    AGENTD_STATIC_DIR=/home/agentd/web/dist \
     AGENTD_HOST=0.0.0.0 \
     AGENTD_PORT=8000 \
     AGENTD_DATA_DIR=/data
@@ -44,6 +55,7 @@ RUN groupadd --gid 10001 agentd \
     && chown -R agentd:agentd /data
 
 COPY --from=builder /opt/venv /opt/venv
+COPY --from=console /web/dist /home/agentd/web/dist
 COPY --chmod=0755 deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 USER agentd

@@ -182,9 +182,13 @@ def _mount_console(app: FastAPI, settings: Settings) -> None:
 
     from fastapi.staticfiles import StaticFiles
 
-    candidates = [settings.static_dir, Path.cwd() / "web" / "dist"]
+    if settings.static_dir is not None:
+        # 显式指定：存在才挂，不回退（测试可用不存在路径表达"未构建"）
+        candidates = [settings.static_dir]
+    else:
+        candidates = [Path.cwd() / "web" / "dist"]
     for candidate in candidates:
-        if candidate and (candidate / "index.html").exists():
+        if (candidate / "index.html").exists():
             app.mount("/", StaticFiles(directory=str(candidate), html=True), name="console")
             logger.info("console.mounted", extra={"path": str(candidate)})
             return

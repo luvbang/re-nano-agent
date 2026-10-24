@@ -84,6 +84,12 @@ async def test_static_console_mounted_after_api(tmp_path: Path) -> None:
         assert denied.status_code == 401
 
 
-async def test_no_static_dir_is_fine(client: AsyncClient) -> None:
-    root = await client.get("/")
-    assert root.status_code == 404  # 未构建时不挂载，不影响 API
+async def test_no_static_dir_is_fine(tmp_path: Path) -> None:
+    settings = make_settings(tmp_path, static_dir=tmp_path / "absent")
+    app = create_app(settings, provider=FakeChatProvider(turn_fn=demo_turn))
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c,
+    ):
+        root = await c.get("/")
+        assert root.status_code == 404  # 显式指向不存在目录 = 不挂载，不影响 API
