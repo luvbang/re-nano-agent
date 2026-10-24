@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 APP_VERSION = "0.1.0"
@@ -39,6 +39,18 @@ class Settings(BaseSettings):
 
     sqlite_busy_timeout_ms: int = Field(default=5000, ge=0)
     request_id_header: str = "X-Request-Id"
+
+    # 模型接入（OpenAI-compatible 单 provider，M1）
+    llm_api_key: SecretStr = SecretStr("")
+    llm_base_url: str = "https://api.openai.com/v1"
+    llm_model: str = "gpt-4o-mini"
+    llm_timeout_s: float = Field(default=120.0, gt=0)
+    llm_retries: int = Field(default=3, ge=0)
+
+    # 运行时上限（M1）
+    run_max_iterations: int = Field(default=8, ge=1)
+    run_timeout_s: float = Field(default=600.0, gt=0)
+    run_tool_timeout_s: float = Field(default=60.0, gt=0)
 
     @model_validator(mode="after")
     def _resolve_paths(self) -> Settings:
