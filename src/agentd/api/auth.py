@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import secrets
 from dataclasses import dataclass
 from typing import Annotated, Any
@@ -97,3 +98,26 @@ async def require_admin(
 
 ProjectAuth = Annotated[AuthContext, Depends(require_project)]
 AdminAuth = Annotated[AuthContext, Depends(require_admin)]
+
+
+async def enforce_rate_limit(
+    request: Request, auth: ProjectAuth
+) -> AuthContext:
+    """per-key + 全局令牌桶；超限 429 并带 Retry-After（契约 §4）。"""
+    from agentd.api.errors import AppError, ErrorCode
+    from agentd.security.ratelimit import RateLimiter
+
+    limiter: RateLimiter | None = getattr(request.app.state, "rate_limiter", None)
+    if limiter is None:
+        return auth
+    wait_s = limiter.check(auth.key)
+    if wait_s is not None:
+        raise AppError(
+            ErrorCode.RATE_LIMITED,
+            "请求过于频繁，请稍后重试",
+            headers={"Retry-After": str(max(1, math.ceil(wait_s)))},
+        )
+    return auth
+
+
+RateLimitedAuth = Annotated[AuthContext, Depends(enforce_rate_limit)]

@@ -99,6 +99,9 @@ def create_app(settings: Settings | None = None, *, provider: Provider | None = 
         if recovered:
             logger.warning("runs.interrupted", extra={"count": recovered})
         app.state.run_manager = _build_run_manager(settings, db, provider)
+        from agentd.security.ratelimit import RateLimiter
+
+        app.state.rate_limiter = RateLimiter(global_per_min=settings.ratelimit_global_per_min)
         logger.info(
             "app.started",
             extra={"env": settings.env, "version": APP_VERSION, "db_path": str(db.path)},
@@ -125,11 +128,17 @@ def create_app(settings: Settings | None = None, *, provider: Provider | None = 
     app.add_middleware(RequestIDMiddleware, header_name=settings.request_id_header)
     register_error_handlers(app)
     app.include_router(health_router)
+    from fastapi import Depends
+
+    from agentd.api.auth import enforce_rate_limit
     from agentd.api.routes.admin import router as admin_router
+    from agentd.api.routes.platform import router as platform_router
     from agentd.api.routes.runs import router as runs_router
     from agentd.api.routes.sessions import router as sessions_router
 
+    throttled = [Depends(enforce_rate_limit)]
     app.include_router(admin_router)
-    app.include_router(sessions_router)
-    app.include_router(runs_router)
+    app.include_router(sessions_router, dependencies=throttled)
+    app.include_router(runs_router, dependencies=throttled)
+    app.include_router(platform_router)
     return app
