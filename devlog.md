@@ -215,3 +215,32 @@
 **技术债（只登记不修）**
 - 指标进程内存态（重启清零）；告警为脚本级（无 Prometheus AlertManager 集成）
 - body-limit 中间件对无 Content-Length 请求采用预读缓冲（v0.1 请求皆小 JSON，可接受）
+
+---
+
+## 2026-10-24（M6 D0–D5 合并执行）
+
+**完成**
+- D0 后端支撑：GET /v1/sessions（rowid 决胜同毫秒稳定性）、_mount_console（显式 static_dir 优先，未构建无害）
+- D1-D3 控制台 web/：React18+Vite+Tailwind+TanStack Query+react-router 六页——登录（双 key：管理员+项目）、Playground（SSE fetch 流式、completed 全文覆盖、工具卡展开）、Sessions、Keys（建 project/key/一次性明文/一键绑定/撤销）、Usage（CSS 条形图）、Status（health 徽章+stats）；投影纯函数 + vitest
+- D3 构建链：Dockerfile node:22-alpine 阶段（NPM_REGISTRY 换源、dist 进镜像）、CI web job；ADR-008 裁剪：shadcn→手写原语、recharts→CSS 条（devlog 记录理由）
+- D4 文档：sdk-guide / faq / api-reference / README 更新至 rc 状态（文档导航+离线体验入口）
+- D5 发布 v0.1.0-rc
+
+**证据**
+- 189 测试全绿（后端 186 + 控制台支撑 3）；前端 vitest 5 例、tsc 零错；bundle gzip 79.5KB（预算 250KB）
+- 浏览器实测（IAB）：登录→建 key→Playground「现在几点了？」→ get_time 工具卡(ok,0ms)+流式回答+用量 in14/out14 → Sessions/Usage/Status 全通；截图留 artifacts
+- serve_fake.py 本地零配置演示（admin-local-demo）
+
+**明日 3 件（M7）**
+1. 内测 triage：收集卡点建 issue，修 P0
+2. 性能：冷启动/SSE 批处理观察（P95 记录）
+3. 故障演练补 RUNBOOK（上游断流/DB 锁/磁盘满）
+
+**阻塞（人工项）**
+- 邀请 2–3 个内测用户（quickstart.md + 项目 key）；真人接入验证（M4 遗留）
+- VPS 部署后控制台线上可用性确认（HTTPS 下 SSE）
+
+**技术债（只登记不修）**
+- 控制台无端到端浏览器测试进 CI（本次人工验收；Playwright 冒烟 v0.2）
+- Usage 图表无虚拟化（单实例量级小）；Keys 页无 project 重命名

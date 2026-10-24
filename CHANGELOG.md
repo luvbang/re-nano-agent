@@ -4,6 +4,26 @@
 
 ## [Unreleased]
 
+## [v0.1.0-rc] - 2026-10-24
+
+M6：极简控制台 + 文档 + RC。
+
+### Added
+
+- Web 控制台 `web/`（React18+Vite+Tailwind+TanStack Query）：登录（管理员+项目双 key）、Playground（SSE 流式渲染、message.completed 全文覆盖、工具卡展开参数）、Sessions、Keys（project/key 创建、明文一次性显示、一键绑定 Playground、撤销）、Usage（按天/模型条形图+日期过滤）、Status（health/ready 徽章 + 运行概况）；事件投影纯函数 + vitest
+- 构建链：Dockerfile `node:22-alpine` 阶段（`NPM_REGISTRY` 可换源，dist 打进镜像）、CI web job（typecheck/vitest/build）；bundle gzip 79.5KB
+- API：`GET /v1/sessions` 列表（契约补齐）；`_mount_console` 同源静态托管（显式 `AGENTD_STATIC_DIR`）
+- `scripts/serve_fake.py`：零配置本地演示（fake provider + 控制台）
+- 文档：`docs/sdk-guide.md`、`docs/faq.md`、`docs/api-reference.md`；README 更新至 rc 状态与文档导航
+
+### DoD 证据
+
+- 浏览器实测全链路：登录→建 key→Playground 流式对话（get_time 工具卡）→Sessions/Usage/Status；189 测试全绿
+
+### Known issues
+
+- 控制台浏览器测试未进 CI（人工验收）；线上 HTTPS 下 SSE 待 VPS 验证
+
 ## [v0.1.0-m5] - 2026-10-24
 
 M5：部署硬化 + 运维 + 可观测。

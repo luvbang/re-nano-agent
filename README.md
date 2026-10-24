@@ -2,10 +2,9 @@
 
 可自托管的 Agent 运行时：外部团队用自己的 API Key，通过 **HTTP/SSE API** 或 **Python SDK** 创建会话、发送消息，获得带工具调用能力（文件 / shell / web）的流式 Agent 回答，并能在崩溃后恢复会话、查询用量与审计记录。
 
-> 当前版本：**M0（骨架 + 部署链）**。已有：FastAPI 空服务（`/healthz` `/readyz`）、统一错误信封与 request-id 贯穿、JSON 日志、SQLite schema v1 + 幂等迁移、Repository 骨架、容器与部署手册、CI 门禁。
-> 还没有（按里程碑推进）：Provider / Runner / 工具 / 业务 API / SDK。
+> 当前版本：**v0.1.0-rc**（M0–M6 完成）。平台 API（会话/流式 run/SSE 续传/取消/幂等/限流/计量/审计）、Python SDK（同步+异步）、工具集（文件/web_fetch，shell 可选白名单）、上下文预算与 LLM 摘要压缩、备份恢复、Prometheus 指标、内置 Web 控制台均已就绪。
 
-范围与路线：[`V0.1-SCOPE.md`](V0.1-SCOPE.md) · [`docs/milestones.md`](docs/milestones.md) · 架构 [`docs/architecture.md`](docs/architecture.md) · 接口契约 [`docs/api-contract.md`](docs/api-contract.md) · 部署 [`docs/deploy.md`](docs/deploy.md)
+文档导航：[快速接入（外部用户，5 分钟）](docs/quickstart.md) · [SDK 指南](docs/sdk-guide.md) · [API 参考](docs/api-reference.md) · [FAQ](docs/faq.md) · 范围 [`V0.1-SCOPE.md`](V0.1-SCOPE.md) · 里程碑 [`docs/milestones.md`](docs/milestones.md) · 架构 [`docs/architecture.md`](docs/architecture.md) · 接口契约 [`docs/api-contract.md`](docs/api-contract.md) · 部署 [`docs/deploy.md`](docs/deploy.md) · 运维 [`docs/ops.md`](docs/ops.md) · 安全 [`docs/security-checklist.md`](docs/security-checklist.md)
 
 ## 快速开始（新克隆）
 
@@ -23,6 +22,11 @@ uv run python scripts/tasks.py dev        # http://127.0.0.1:8000/docs
 # 4) 验收
 curl -s http://127.0.0.1:8000/healthz     # {"status":"ok","version":"0.1.0",...}
 curl -s http://127.0.0.1:8000/readyz      # {"status":"ready","checks":{"db":"ok"}}
+
+# 5) 控制台与离线体验（可选）
+uv run python scripts/serve_fake.py        # 浏览器打开 http://127.0.0.1:8000
+#    管理员 key = admin-local-demo（fake provider，无需真实模型 key）
+# 真实模型：.env 配 AGENTD_LLM_* 后 uv run python scripts/tasks.py dev
 ```
 
 有 `make` 的环境（Linux/macOS/CI）等价写法：

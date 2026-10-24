@@ -76,6 +76,16 @@ curl https://<你的域名>/healthz           # DoD：返回 {"status":"ok",...}
 - 防火墙只放行 80/443/SSH：`ufw allow 80,443/tcp && ufw enable`
 - （可选）`docker run --rm -i aquasec/trivy image agentd:m5` 镜像扫描
 
+## 4.9 内测邀请（M6 D5，~1 小时）
+
+邀请 2–3 个内部/朋友团队，每人发三样东西：
+
+1. 平台地址 + 管理员为他们建的 project key（你操作：控制台 Keys 页或 admin API）
+2. `docs/quickstart.md`（5 分钟接入，含计时栏）
+3. `docs/faq.md` 链接
+
+收集：接入耗时、卡点、首次 run 是否成功。P0 问题当天修（M7 triage 素材）。
+
 ## 完成后
 
 把各项结果（成功/失败/实际耗时）记进 `devlog.md` 对应日期条目；M2 起按 `docs/milestones.md` 继续。
