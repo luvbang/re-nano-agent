@@ -30,6 +30,7 @@ from agentd.providers.base import (
 from agentd.providers.base import (
     ReasoningDelta as ProviderReasoningDelta,
 )
+from agentd.runtime.context import ContextBudgetError, ContextBuilder
 from agentd.runtime.events import (
     MessageCompleted,
     MessageDelta,
@@ -83,6 +84,7 @@ class AgentRunner:
         max_iterations: int = 8,
         timeout_s: float = 600.0,
         on_message: Callable[[ChatMessage], Awaitable[None]] | None = None,
+        context_builder: ContextBuilder | None = None,
     ) -> None:
         self.provider = provider
         self.tools = tools
@@ -92,6 +94,7 @@ class AgentRunner:
         self.max_iterations = max_iterations
         self.timeout_s = timeout_s
         self.on_message = on_message
+        self.context_builder = context_builder
 
     async def run(
         self, history: Sequence[ChatMessage], user_input: str
@@ -100,14 +103,26 @@ class AgentRunner:
 
         on_message 钩子按发生顺序收到 user / assistant(含 tool_calls) / tool /
         最终 assistant 消息（system 可由配置重建，不走钩子）——供持久层落库。
+        配置了 context_builder 时走预算组装（超限裁剪/截断，装不下则 RunFailed）。
         """
-        messages: list[ChatMessage] = [
-            ChatMessage(role="system", content=self.system_prompt),
-            *history,
-            ChatMessage(role="user", content=user_input),
-        ]
-        await self._notify(messages[-1])
         yield RunStarted(run_id=self.run_id, session_id=self.session_id)
+        if self.context_builder is not None:
+            try:
+                messages = self.context_builder.build(
+                    history, user_input, system_prompt=self.system_prompt
+                )
+            except ContextBudgetError as exc:
+                yield RunFailed(
+                    code="invalid_request", message=str(exc), retryable=False
+                )
+                return
+        else:
+            messages = [
+                ChatMessage(role="system", content=self.system_prompt),
+                *history,
+                ChatMessage(role="user", content=user_input),
+            ]
+        await self._notify(messages[-1])
         usage_total = _UsageTotals()
         drive = self._drive(messages, usage_total)
         try:
@@ -190,7 +205,7 @@ class AgentRunner:
     async def _execute(self, call: ToolCallCompleted) -> ToolResult:
         if self.tools is None:
             return ToolResult.error(f"工具 {call.name} 不存在：注册表未配置")
-        return await self.tools.execute(call.name, call.arguments)
+        return await self.tools.execute(call.name, call.arguments, run_id=self.run_id)
 
     async def _notify(self, message: ChatMessage) -> None:
         if self.on_message is not None:

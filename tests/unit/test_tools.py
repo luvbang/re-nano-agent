@@ -11,7 +11,7 @@ import pytest
 from agentd.providers.base import ToolDefinition
 from agentd.tools.base import Tool, ToolResult
 from agentd.tools.builtin import EchoTool, GetTimeTool
-from agentd.tools.registry import ToolRegistry, _truncate
+from agentd.tools.registry import MAX_TOOL_RESULT_CHARS, ToolRegistry
 
 
 class SlowTool(Tool):
@@ -77,11 +77,21 @@ async def test_tool_timeout_not_hang() -> None:
     assert "超时" in result.content
 
 
+class BigOutputTool(Tool):
+    @property
+    def definition(self) -> ToolDefinition:
+        return ToolDefinition(
+            name="big", description="", parameters={"type": "object", "properties": {}}
+        )
+
+    async def execute(self, args: dict[str, Any]) -> ToolResult:
+        return ToolResult(content="x" * (MAX_TOOL_RESULT_CHARS + 2_000))
+
+
 async def test_result_truncation() -> None:
-    long = ToolResult(content="x" * 20_000)
-    truncated = _truncate(long, limit=100)
-    assert len(truncated.content) < 200
-    assert "truncated" in truncated.content
+    result = await ToolRegistry().register(BigOutputTool()).execute("big", "{}")
+    assert len(result.content) < MAX_TOOL_RESULT_CHARS + 200
+    assert "truncated" in result.content
 
 
 async def test_duplicate_registration_rejected() -> None:

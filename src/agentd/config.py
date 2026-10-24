@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_timeout_s: float = Field(default=120.0, gt=0)
     llm_retries: int = Field(default=3, ge=0)
+    llm_context_window: int = Field(default=128_000, ge=4_096)
+    llm_max_output: int = Field(default=4_096, ge=256)
 
     # 运行时上限（M1）
     run_max_iterations: int = Field(default=8, ge=1)

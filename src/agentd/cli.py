@@ -19,6 +19,7 @@ from agentd.providers.base import Provider
 from agentd.providers.fake import FakeChatProvider, demo_turn
 from agentd.providers.openai_compat import OpenAICompatProvider
 from agentd.providers.retry import RetryingProvider
+from agentd.runtime.context import ContextBuilder
 from agentd.runtime.events import (
     MessageCompleted,
     MessageDelta,
@@ -160,8 +161,13 @@ def _cmd_chat(args: argparse.Namespace) -> int:
         session = await sessions.get_or_create_by_title(
             str(project["id"]), args.session, external_user_id="cli"
         )
-        registry = ToolRegistry(tool_timeout_s=settings.run_tool_timeout_s).register_all(
-            BUILTIN_TOOLS
+        assert settings.workspace_root is not None  # _resolve_paths 已填充
+        registry = ToolRegistry(
+            tool_timeout_s=settings.run_tool_timeout_s,
+            overflow_root=settings.workspace_root / ".runs",
+        ).register_all(BUILTIN_TOOLS)
+        context_builder = ContextBuilder(
+            context_window=settings.llm_context_window, max_output=settings.llm_max_output
         )
         model = "fake-demo" if args.fake else (args.model or settings.llm_model)
         session_id = str(session["id"])
@@ -178,6 +184,7 @@ def _cmd_chat(args: argparse.Namespace) -> int:
                 runner_kwargs={
                     "max_iterations": settings.run_max_iterations,
                     "timeout_s": settings.run_timeout_s,
+                    "context_builder": context_builder,
                 },
             ):
                 yield event
