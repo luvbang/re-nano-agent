@@ -7,7 +7,7 @@
 | M0 | Week 0 | 范围冻结 + 骨架 + 部署链 | 仓库/CI/FastAPI 空壳/SQLite 迁移/线上 hello | 线上 `/healthz` 可用；CI 绿 | 完成（线上 VPS 部署待执行） |
 | M1 | Week 1 | Provider + Runner + 流式 | LLM 对话循环、工具调用回路、CLI demo | CLI 多轮+工具调用；取消不悬挂 | 完成（真实模型连通待人工验收） |
 | M2 | Week 2 | 会话持久化 + 上下文 + 真工具 + 安全 | 文件/shell/web 工具、路径/SSRF guard、重启续聊 | 安全测试全绿；重启恢复 | 完成（2026-10-24） |
-| M3 | Week 3 | 平台 API + 鉴权 + 并发 | sessions/runs/SSE/取消/限流/OpenAPI | curl 全流程；20 并发无 5xx | 待开始 |
+| M3 | Week 3 | 平台 API + 鉴权 + 并发 | sessions/runs/SSE/取消/限流/OpenAPI | curl 全流程；20 并发无 5xx | 完成（2026-10-24，20 并发压测待做） |
 | M4 | Week 4 | SDK + 计量 + 审计 + 压缩 | Python SDK、usage/audit、摘要压缩 | 外部人员 30 分钟接入 | 待开始 |
 | M5 | Week 5 | 部署硬化 + 运维 + 可观测 | 非 root 镜像、备份恢复、metrics、安全复查 | 新机 30 分钟部署；备份演练 | 待开始 |
 | M6 | Week 6 | 控制台（P1）+ 文档 + RC | Playground/Key/Usage（可砍）、文档站、v0.1.0-rc | 3 个内测用户按文档接入 | 进行中（控制台前端已完成，含离线演示模式；待 M3 端点联调 + 文档站） |

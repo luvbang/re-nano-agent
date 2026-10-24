@@ -230,13 +230,12 @@ class RunService:
                         final_status = "failed"
         except asyncio.CancelledError:
             final_status = "cancelled"
-            try:
+            # 重复取消时兜底交给下次启动的 recover_interrupted
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._finalize(
                     run_id=run_id, status="cancelled", usage=usage_total, error=None,
                     project_id=project_id, model=settings.llm_model,
                 )
-            except asyncio.CancelledError:
-                pass  # 重复取消：状态由下次启动 recover_interrupted 兜底
         except Exception:
             logger.exception("run.execute_failed", extra={"run_id": run_id})
             final_status = "failed"
@@ -267,7 +266,9 @@ class RunService:
     async def _publish_and_persist_failure(
         self, run_id: str, error_body: dict[str, Any]
     ) -> None:
-        row = await self.db.fetch_one("SELECT COALESCE(MAX(seq), 0) AS m FROM run_events WHERE run_id = ?", (run_id,))
+        row = await self.db.fetch_one(
+            "SELECT COALESCE(MAX(seq), 0) AS m FROM run_events WHERE run_id = ?", (run_id,)
+        )
         seq = int(row["m"]) + 1 if row else 1
         envelope = {"seq": seq, "type": "run.failed", "error": error_body}
         await self._persist_event(run_id, envelope)

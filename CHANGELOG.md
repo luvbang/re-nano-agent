@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+### Added（M3：平台 API + 鉴权 + 并发）
+
+- 鉴权：`api/auth.py`（Bearer → sha256 → key 行；撤销立即生效；scope 区分 core/admin）、`services/keys.py`（`agd_` key 生成、`AGENTD_ADMIN_API_KEY` 启动引导 admin scope key + default 项目）
+- 限流：`security/ratelimit.py` 进程内滑动窗口（每 key RPM，超限 429 错误信封 + Retry-After）
+- run 编排：`services/runs.py` RunService —— 后台任务执行、事件编 seq、控制类事件落 `run_events`（delta 不落库）、订阅队列广播、终态收敛（completed/failed/cancelled）、usage_records 计量、成功轮经 ConversationService 落库、进程收尾 shutdown
+- 端点（契约 §2）：`POST/GET /v1/sessions`、`GET /v1/sessions/{id}(/messages)`（seq 游标分页）、`POST /v1/sessions/{id}/runs`（202 + `Idempotency-Key` 5 分钟幂等 + 同会话并发 409）、`GET /v1/runs/{id}`、`POST /v1/runs/{id}/cancel`、`GET /v1/runs/{id}/events`（SSE：Last-Event-ID 回放、15s 心跳、终态关流）、`GET /v1/admin/keys`（创建一次性 secret/列表/撤销）、`GET /v1/usage`（day/model 聚合）、`GET /v1/models`
+- provider 装配：`provider=auto`（配 key 走真实模型，无 key 回退 fake 离线全链路）
+- OpenAPI：全部 /v1 端点带 pydantic 响应模型（`/openapi.json`）
+
 ### Added（M2：会话持久化 + 上下文 + 真工具 + 安全）
 
 - 安全边界：`security/paths.py`（workspace 路径关押：拒绝绝对路径/`..`/软链逃逸/盘符相对路径）、`security/ssrf.py`（DNS 全记录公网校验、IPv4-mapped 解包、每跳重定向校验、字面量 IP 直判）
@@ -29,9 +38,10 @@
 
 ### DoD 证据
 
-- 后端：`ruff` / `mypy`（53 files）/ `pytest` 119 passed（含路径穿越、软链逃逸、SSRF 全保留段、SSRF 重定向拦截、重启续聊）
-- 前端：`vitest` 14 passed（投影契约序列 + SSE 解析边界）；`tsc --noEmit && vite build` 通过，bundle gzip 194.63KB（< 250KB 预算）
-- 浏览器实测（离线演示模式）：六页面渲染正常；Playground 连发三轮（Enter/按钮）流式回答、工具卡（成功·418ms）、usage 徽标、历史保留均正确；创建 Key 一次性 secret 展示正确
+- 后端：`ruff` / `mypy`（62 files）/ `pytest` **131 passed**（新增 12 个 /v1 集成测试：鉴权 401/403/撤销、全流程含工具回路、SSE 回放与 Last-Event-ID、取消、并发 409、幂等、限流 429、跨项目 404、重启恢复、models）
+- 真实链路浏览器联调：`AGENTD_ADMIN_API_KEY` + fake provider 起服 → 控制台登录真实 key → Playground 发消息 → 真实 SSE 流式 + 真实 get_time 工具卡（返回服务器当前时间）→ Usage 图表渲染当日真实 run
+- M2 回归：路径穿越/软链逃逸/SSRF 全保留段/重启续聊等安全测试全绿
+- 前端（M6 前置，见下）：`vitest` 14 passed；`tsc --noEmit && vite build` 通过，bundle gzip 194.63KB（< 250KB 预算）；演示模式六页面浏览器实测通过
 - `agentd serve` 实测：`/`、`/playground`、`/keys` 200（SPA 回退）；`/v1/nope` 错误信封；assets `cache-control: immutable`、index `no-cache`
 
 ## [v0.1.0-m1] - 2026-10-24

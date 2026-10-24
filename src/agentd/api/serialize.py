@@ -39,9 +39,11 @@ def message_out(row: dict[str, Any]) -> MessageOut:
     if row.get("content_json") is not None:
         try:
             decoded = json.loads(row["content_json"])
-            content = decoded if isinstance(decoded, str) else json.dumps(decoded, ensure_ascii=False)
+            is_str = isinstance(decoded, str)
         except ValueError:
-            content = row["content_json"]
+            decoded, is_str = row["content_json"], True
+        # 非字符串（多模态块）压回紧凑 JSON
+        content = decoded if is_str else json.dumps(decoded, ensure_ascii=False)
     tool_calls: list[ToolCallOut] | None = None
     if row.get("tool_calls_json"):
         try:

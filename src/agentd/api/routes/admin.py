@@ -60,9 +60,8 @@ async def revoke_key(key_id: str, admin: AdminDep, db: DbDep) -> None:
 @router.get("/models", response_model=ModelsOut)
 async def list_models(auth: AuthDep, request: Request) -> ModelsOut:
     tools: ToolRegistry | None = request.app.state.tools
-    return ModelsOut(
-        items=[{"id": request.app.state.settings.llm_model, "tools": tools.names() if tools else []}]
-    )
+    model_id: str = request.app.state.settings.llm_model
+    return ModelsOut(items=[{"id": model_id, "tools": tools.names() if tools else []}])
 
 
 @router.get("/usage", response_model=UsageOut)

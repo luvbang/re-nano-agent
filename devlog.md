@@ -121,3 +121,25 @@
 - `agentd serve` 的 SPA catch-all 只注册 GET（HEAD 405，无实际影响）
 - recharts 体积占 bundle 大头，v0.2 若加页面再考虑 code-split
 - 工具 JSON Schema 参数校验（additionalProperties）仍未做 → 随 M3 契约层
+
+---
+
+## 2026-10-24（M3：平台 API + 鉴权 + 并发）
+
+**完成**
+
+- 鉴权与限流：`api/auth.py`（Bearer→sha256→key 行，撤销立即生效，core/admin scope）、`services/keys.py`（`AGENTD_ADMIN_API_KEY` 启动引导）、`security/ratelimit.py`（每 key 滑动窗口 RPM）
+- RunService：后台任务 + 事件编 seq + 控制类事件落 `run_events`（delta 不落库）+ 订阅队列广播 + 终态收敛（completed/failed/cancelled）+ usage_records 计量 + 成功轮落库 + shutdown 收敛
+- 端点：sessions CRUD/messages 分页、runs 202+幂等（Idempotency-Key 5min）+并发 409+取消、SSE（Last-Event-ID 回放/15s 心跳/终态关流）、admin keys（一次性 secret）、usage day/model 聚合、models
+- provider 装配：`provider=auto` 无 key 回退 fake —— 离线全链路可跑（前端真实模式的联调基础）
+
+**证据**
+
+- `ruff` / `mypy`（62 files）/ `pytest` **131 passed**（新增 12 个 /v1 集成测试）
+- 真实链路浏览器联调：`AGENTD_ADMIN_API_KEY` + fake provider → 控制台真实 key 登录 → Playground 发"现在几点了？" → 真实 SSE 流式 + 真实 get_time 工具卡（服务器当前时间）→ Usage 图表渲染当日真实 run（截图确认）
+
+**技术债（只登记不修）**
+
+- create_run 的冲突检查与插入非原子（两个同时到达的请求可能都过检）；v0.1 单管理员可接受，M5 压测若暴露再加活跃 run 唯一约束
+- 20 并发 DoD 压测未执行（需要 M5 的部署环境）；SSE 重连/回放的浏览器侧实测待真实网络环境
+- 限流为进程内存态，多副本部署需换共享存储
