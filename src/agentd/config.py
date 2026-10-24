@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_timeout_s: float = Field(default=120.0, gt=0)
     llm_retries: int = Field(default=3, ge=0)
+    # auto：有 key 走真实模型，无 key 回退 fake（离线可跑通全链路）
+    provider: Literal["auto", "openai", "fake"] = "auto"
+
+    # 鉴权（M3）：管理员 key 由环境变量引导；未配置则 /v1/admin/* 不可用
+    admin_api_key: SecretStr = SecretStr("")
 
     # 运行时上限（M1）
     run_max_iterations: int = Field(default=8, ge=1)
