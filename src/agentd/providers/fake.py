@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import AsyncIterator, Callable, Sequence
+from collections.abc import AsyncGenerator, Callable, Sequence
 
 from agentd.providers.base import (
     ChatMessage,
@@ -53,7 +53,7 @@ class FakeChatProvider(Provider):
         *,
         tools: Sequence[ToolDefinition] | None = None,
         model: str | None = None,
-    ) -> AsyncIterator[ProviderEvent]:
+    ) -> AsyncGenerator[ProviderEvent, None]:
         self.calls.append(list(messages))
         self.requested_tools.append(list(tools) if tools else None)
         self.open_streams += 1

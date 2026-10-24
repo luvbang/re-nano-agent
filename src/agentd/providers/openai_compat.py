@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncGenerator, Sequence
 from typing import Any
 
 import httpx
@@ -65,7 +65,7 @@ class OpenAICompatProvider(Provider):
         *,
         tools: Sequence[ToolDefinition] | None = None,
         model: str | None = None,
-    ) -> AsyncIterator[ProviderEvent]:
+    ) -> AsyncGenerator[ProviderEvent, None]:
         payload: dict[str, Any] = {
             "model": model or self.model,
             "messages": list(messages),

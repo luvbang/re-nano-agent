@@ -11,7 +11,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncGenerator, Sequence
 from dataclasses import dataclass
 from typing import Any, NotRequired, TypedDict
 
@@ -154,7 +154,11 @@ class ProviderRejectedError(ProviderError):
 
 
 class Provider(ABC):
-    """chat.completions 风格的流式对话接口。"""
+    """chat.completions 风格的流式对话接口。
+
+    返回 AsyncGenerator 而非 AsyncIterator：调用方（Runner）有提前关闭流的
+    语义（aclose），这是取消语义的一部分，属于接口契约。
+    """
 
     @abstractmethod
     def chat(
@@ -163,5 +167,5 @@ class Provider(ABC):
         *,
         tools: Sequence[ToolDefinition] | None = None,
         model: str | None = None,
-    ) -> AsyncIterator[ProviderEvent]:
+    ) -> AsyncGenerator[ProviderEvent, None]:
         raise NotImplementedError
