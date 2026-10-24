@@ -133,12 +133,21 @@ class RunManager:
         return self._active.get(run_id)
 
     async def shutdown(self) -> None:
-        """进程停机：取消活跃 run（各自持久化 cancelled）并等待收尾。"""
-        tasks = [active.task for active in self._active.values()]
-        for task in tasks:
-            task.cancel()
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+        """进程停机：取消活跃 run（各自持久化 cancelled）并等待收尾。
+
+        任务可能在首次调度前就被取消（run 仍 queued，协程体没机会落终态），
+        因此 gather 后对仍非终态的 run 兜底写 cancelled。
+        """
+        pending = dict(self._active)
+        for active in pending.values():
+            active.task.cancel()
+        if pending:
+            await asyncio.gather(*(a.task for a in pending.values()), return_exceptions=True)
+        for run_id in pending:
+            row = await self.runs.get(run_id)
+            if row is not None and row["status"] not in RunRepository.TERMINAL_STATUSES:
+                await self.runs.finish(run_id, "cancelled", error={"code": "cancelled"})
+        self._active.clear()
 
     # ---------- 启动 ----------
 
