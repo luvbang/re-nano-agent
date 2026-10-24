@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     run_shell_allowlist: str = ""  # 逗号分隔的命令前缀，如 "git,python -m pytest"
     run_shell_timeout_s: float = Field(default=30.0, gt=0)
 
+    # 平台 API（M3）
+    admin_api_key: SecretStr = SecretStr("")  # env 管理员 key（引导用；DB admin scope 亦可）
+
     @model_validator(mode="after")
     def _resolve_paths(self) -> Settings:
         self.data_dir = self.data_dir.expanduser().resolve()

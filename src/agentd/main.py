@@ -66,4 +66,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(RequestIDMiddleware, header_name=settings.request_id_header)
     register_error_handlers(app)
     app.include_router(health_router)
+    from agentd.api.routes.admin import router as admin_router
+    from agentd.api.routes.sessions import router as sessions_router
+
+    app.include_router(admin_router)
+    app.include_router(sessions_router)
     return app
