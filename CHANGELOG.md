@@ -4,6 +4,22 @@
 
 ## [Unreleased]
 
+## [v0.1.0-rc2] - 2026-10-24
+
+M7：内测稳定性（机器可执行部分）。
+
+### Added
+
+- 性能基线：`scripts/perf.py`（TTFT/完成延迟分位 + Go/No-Go 自动判定）；`docs/perf-baseline.md`——平台开销 TTFT P95=59ms（预算 3000ms），20 并发 82rps 零失败
+- 故障演练：上游中途断流/重试耗尽注入测试（不悬挂、事件可回放、会话可恢复、审计留痕）
+- `docs/runbook.md`：七类故障（上游/DB 锁/磁盘满/OOM/证书/SSE 重连/数据恢复）的症状-判定-处置
+- `docs/stability-report.md`（证据矩阵 + 线上待填表）、`docs/announcement-draft.md`
+- M8 预置：`docs/go-live-checklist.md`（机器已验/人工待办分离）、`docs/operations.md` 运营手册、`docs/retro.md`（复盘 + v0.2 优先级：MCP > 多 provider > 记忆 > 控制台完善 > Postgres > 多通道 > PyPI）
+
+### Known issues
+
+- 「连续 5 天无 P0/成功率>98%」与真实模型 TTFT 需线上数据；v0.1.0 待 go-live-checklist 人工签收后发布
+
 ## [v0.1.0-rc] - 2026-10-24
 
 M6：极简控制台 + 文档 + RC。

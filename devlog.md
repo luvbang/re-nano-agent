@@ -244,3 +244,22 @@
 **技术债（只登记不修）**
 - 控制台无端到端浏览器测试进 CI（本次人工验收；Playwright 冒烟 v0.2）
 - Usage 图表无虚拟化（单实例量级小）；Keys 页无 project 重命名
+
+---
+
+## 2026-10-24（M7 + M8 机器可执行部分合并执行）
+
+**完成**
+- M7-D3 性能：scripts/perf.py（建会话→run→SSE 首事件→终态分位计时，TTFT 对照 Go/No-Go 自动判 PASS）+ docs/perf-baseline.md（本机基线 TTFT P95=59ms/预算 3000ms；吞吐 82rps；60/60 无失败）
+- M7-D4 故障：断流/重试耗尽注入测试（run 落终态、事件可回放、会话可继续、审计留痕）+ docs/runbook.md（上游/DB 锁/磁盘满/OOM/证书/SSE 重连/数据恢复 七类处置）
+- M7-D5 稳定性：docs/stability-report.md（证据矩阵+线上待填表）、announcement-draft.md；tag v0.1.0-rc2
+- M8：docs/go-live-checklist.md（机器已验 vs 人工待办分离签收）、docs/operations.md（值班/巡检/模型切换/限流/对账/保留删除/轮换）、docs/retro.md（复盘+v0.2 优先级）
+
+**证据**
+- 191 测试全绿（+故障注入 2）；TTFT P95=59ms；docker stop/kill 路径全有自动化或实拍
+
+**剩余 = 纯人工项（human-checklist 汇总）**
+1. VPS+域名部署（≤30min 计时）→ 线上 HTTPS/控制台/SSE 验证
+2. M5 线上硬化（.env 0600/备份 cron/TLS 评级/防火墙/trivy）
+3. 真人接入验证（计时+卡点）与内测邀请 2–3 团队
+4. 线上 5 天稳定运行数据回填 stability-report → 全绿后按 go-live-checklist 打 v0.1.0
