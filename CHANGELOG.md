@@ -4,6 +4,29 @@
 
 ## [Unreleased]
 
+## [v0.1.0-m2] - 2026-10-24
+
+M2：会话持久化 + 上下文预算 + 真工具 + 安全边界。
+
+### Added
+
+- 持久化：MessageRepository（模型历史唯一真相，content_json={"text"}）、RunRepository.finish（终态+用量+error_json）、ToolCallRepository（500 字符预览）、UsageRepository（项目聚合）；AgentRunner `on_message` 钩子按序回调 user/assistant(tool_calls)/tool/最终 assistant
+- ChatService：queued→running→终态状态机、历史装载、失败轮 user 落库/assistant 不落、session touch；M3 API 直接复用
+- CLI `chat --session` 落库：重启后同 session 续聊（跨进程验证）
+- ContextBuilder：预算 =(window−max_output)×90%，超限先裁最旧 tool 结果（保留 tool_call_id 配对）→ 截断历史超长单条（加标记）→ 仍超限 RunFailed(invalid_request)；工具结果 >16k 落盘 `workspace/.runs/<run_id>/tool-results/` 并回路径
+- 文件工具 read_file/write_file/edit_file/list_dir：经 WorkspacePathResolver（resolve containment + 逐段 symlink 拒绝 + 绝对路径/盘符/UNC 拒绝）；限额 1MB/2000 行/500 条
+- web_fetch：仅公网（security/ssrf.py：私网/CGNAT/链路本地/元数据/组播/保留/ULA 全拒、DNS 全地址校验、resolve 可注入）、逐跳重定向校验 ≤5 跳、Content-Type 白名单
+- shell 工具：默认关闭；`AGENTD_RUN_SHELL_ENABLED=true` + `AGENTD_RUN_SHELL_ALLOWLIST`（前缀匹配）开启；cwd 锁 workspace、超时 kill、并发信号量、16k 截断
+- 安全测试套件 36 例（tests/security/，CI 阻塞）
+
+### DoD 证据
+
+- 重启续聊跨进程验证；「读文件→改文件→总结」e2e 全程落库；122 测试全绿，分支覆盖 88%
+
+### Known issues
+
+- SSRF 存在校验-连接间的 DNS rebinding 窗口（v0.2 pinned transport）；TOCTOU 软链替换不在威胁模型（SECURITY 注明）
+
 ## [v0.1.0-m1] - 2026-10-24
 
 M1：Provider + Runner + 流式（核心闭环）。

@@ -92,3 +92,34 @@
 - SSE 心跳/seq 编号属 M3 API 层；runner 事件目前无 seq
 - 工具 JSON Schema 校验（additionalProperties）未做 → M2 随真工具补
 - `Database` 读串行化、日志脱敏等 M0 遗留项不变
+
+---
+
+## 2026-10-24（M2 D1–D5 合并执行）
+
+**完成**
+- D1 持久化：MessageRepository（seq/分页/wire 还原）、RunRepository.finish、ToolCallRepository、UsageRepository；AgentRunner on_message 钩子；ChatService（run 状态机 + 消息/用量/工具调用落库）；CLI 会话落库
+- D2 上下文：ContextBuilder 三级预算处置（裁旧 tool 结果→截断超长→报错）、Runner 映射 RunFailed(invalid_request)、工具结果 >16k 落盘 workspace/.runs/<run_id>/tool-results/
+- D3 文件工具：WorkspacePathResolver（resolve containment + 逐段软链拒绝 + 盘符/UNC 拒绝）、read/write/edit/list 四工具带限额
+- D4 安全：security/ssrf.py（全私网段/元数据/混合解析拒绝，resolve 可注入）、web_fetch 逐跳重定向校验、shell 工具默认关（allowlist 前缀 + cwd 锁定 + 超时 kill + 并发信号量）
+- D5 闭环：读→改→总结 e2e + 安全套件汇整
+
+**证据**
+- `ruff`/`mypy`（58 files）/`pytest` 全绿；测试 122（unit 74 + integration 12 + security 36）
+- 重启续聊：两个独立 CLI 进程同 session，DB 4 条消息按序、两条 run completed 带用量
+- e2e：模型脚本化 read_file→edit_file→总结，notes.txt 真实从 draft 改为 final，6 条消息全落库
+- 安全 36 例（DoD ≥15）：穿越/绝对路径/盘符/软链逃逸/越界写不落盘/SSRF 段/元数据/混合 IP/重定向入内网/shell 默认关/allowlist/cwd/超时击杀等；3 例软链在本机 Windows 跳过（CI Linux 执行）
+- 覆盖率（分支）：88%
+
+**明日 3 件（M3 D1）**
+1. API 资源与鉴权：projects/api_keys/sessions 路由 + Bearer→project + 撤销即时生效
+2. runs API：创建（Idempotency-Key）、状态、cancel、per-session 串行、并发信号量
+3. SSE 端点：事件序列化 + seq + Last-Event-ID 回放 + 15s 心跳
+
+**阻塞**
+- 与 M1 相同：无 VPS/域名、无真实模型 key（docs/human-checklist.md）
+
+**技术债（只登记不修）**
+- SSRF 的 DNS rebinding 残余窗口（校验与连接间）→ v0.2 pinned transport
+- 工具 JSON Schema 校验（additionalProperties）仍未做 → M3
+- `tests/security` 的软链用例依赖类 Unix，Windows 开发机本地跳过（CI 全跑）
