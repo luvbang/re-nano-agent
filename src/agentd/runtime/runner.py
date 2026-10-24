@@ -90,11 +90,16 @@ class AgentRunner:
         self.system_prompt = system_prompt
         self.max_iterations = max_iterations
         self.timeout_s = timeout_s
+        # 成功轮的完整交换（user + assistant/tool 消息，不含 system 与 history）；
+        # run() 开始时清空，RunCompleted 前写入——调用方据此落库/续内存历史。
+        self.last_exchange: list[ChatMessage] | None = None
 
     async def run(
         self, history: Sequence[ChatMessage], user_input: str
     ) -> AsyncGenerator[RunEvent, None]:
-        """执行一轮对话；事件序列以 RunStarted 开头，以 RunCompleted 或 RunFailed 结尾。"""
+        """执行一轮对话；事件序列以 RunStarted 开头，以 RunCompleted 或 RunFailed 结束。"""
+        self.last_exchange = None
+        base_len = len(history) + 1  # system + history 之后、本轮 user 之前的消息数
         messages: list[ChatMessage] = [
             ChatMessage(role="system", content=self.system_prompt),
             *history,
@@ -102,7 +107,7 @@ class AgentRunner:
         ]
         yield RunStarted(run_id=self.run_id, session_id=self.session_id)
         usage_total = _UsageTotals()
-        drive = self._drive(messages, usage_total)
+        drive = self._drive(messages, usage_total, base_len=base_len)
         try:
             async with asyncio.timeout(self.timeout_s):
                 async for event in drive:
@@ -123,7 +128,7 @@ class AgentRunner:
             await drive.aclose()
 
     async def _drive(
-        self, messages: list[ChatMessage], usage_total: _UsageTotals
+        self, messages: list[ChatMessage], usage_total: _UsageTotals, *, base_len: int
     ) -> AsyncGenerator[RunEvent, None]:
         for iteration in range(self.max_iterations):
             text = ""
@@ -148,6 +153,8 @@ class AgentRunner:
                 await stream.aclose()
             usage = usage_total.usage()
             if not calls:
+                messages.append(ChatMessage(role="assistant", content=text))
+                self.last_exchange = messages[base_len:]
                 yield MessageCompleted(content=text, usage=usage)
                 yield RunCompleted(usage=usage)
                 return

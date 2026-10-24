@@ -52,6 +52,13 @@ class Settings(BaseSettings):
     run_timeout_s: float = Field(default=600.0, gt=0)
     run_tool_timeout_s: float = Field(default=60.0, gt=0)
 
+    # 上下文与工具边界（M2）
+    context_token_budget: int = Field(default=24_000, ge=1_000)
+    enable_shell_tool: bool = False  # 默认关闭：shell 是可选的高风险能力（ADR-006）
+    web_fetch_enabled: bool = True
+    web_fetch_timeout_s: float = Field(default=15.0, gt=0)
+    web_fetch_max_bytes: int = Field(default=128_000, ge=1_000)
+
     @model_validator(mode="after")
     def _resolve_paths(self) -> Settings:
         self.data_dir = self.data_dir.expanduser().resolve()

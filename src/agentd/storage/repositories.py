@@ -108,6 +108,73 @@ class SessionRepository(Repository):
         )
 
 
+class MessageRepository(Repository):
+    """会话消息（M2）：seq 在 session 内单调递增，单写者串行化下 max+1 安全。"""
+
+    async def append(
+        self,
+        session_id: str,
+        *,
+        role: str,
+        content: str | None = None,
+        tool_calls_json: str | None = None,
+        tool_call_id: str | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        row = await self.db.fetch_one(
+            "SELECT COALESCE(MAX(seq), 0) + 1 AS next FROM messages WHERE session_id = ?",
+            (session_id,),
+        )
+        assert row is not None
+        message_id = new_id("m")
+        await self.db.execute(
+            "INSERT INTO messages (id, session_id, seq, role, content_json, tool_calls_json,"
+            " tool_call_id, meta_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                message_id,
+                session_id,
+                int(row["next"]),
+                role,
+                json.dumps(content) if content is not None else None,
+                tool_calls_json,
+                tool_call_id,
+                json.dumps(meta or {}, ensure_ascii=False),
+            ),
+        )
+        appended = await self.get(message_id)
+        assert appended is not None
+        return appended
+
+    async def get(self, message_id: str) -> dict[str, Any] | None:
+        return await self.db.fetch_one("SELECT * FROM messages WHERE id = ?", (message_id,))
+
+    async def list_by_session(
+        self,
+        session_id: str,
+        *,
+        before_seq: int | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """按 seq 升序返回；before_seq 提供“游标分页”（取更早的消息）。"""
+        if before_seq is None:
+            rows = await self.db.fetch_all(
+                "SELECT * FROM messages WHERE session_id = ? ORDER BY seq DESC LIMIT ?",
+                (session_id, limit),
+            )
+        else:
+            rows = await self.db.fetch_all(
+                "SELECT * FROM messages WHERE session_id = ? AND seq < ? ORDER BY seq DESC LIMIT ?",
+                (session_id, before_seq, limit),
+            )
+        return rows[::-1]
+
+    async def count(self, session_id: str) -> int:
+        row = await self.db.fetch_one(
+            "SELECT COUNT(*) AS n FROM messages WHERE session_id = ?", (session_id,)
+        )
+        return int(row["n"]) if row else 0
+
+
 class RunRepository(Repository):
     TERMINAL_STATUSES = ("completed", "failed", "cancelled", "interrupted")
 

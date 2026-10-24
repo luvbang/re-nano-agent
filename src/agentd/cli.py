@@ -3,7 +3,7 @@
 命令：
     migrate   应用数据库迁移（幂等）
     serve     起 uvicorn（等价于 uvicorn agentd.main:create_app --factory）
-    chat      终端多轮对话（--fake 离线演示，或配置 AGENTD_LLM_* 走真实模型）
+    chat      终端多轮对话（--fake 离线演示；会话按 --session 标签落库，重启续聊）
     version   打印版本与解析后的配置
 """
 
@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
+from pathlib import Path
+from typing import Any
 
 from agentd.config import APP_VERSION, Settings, get_settings
 from agentd.log import configure_logging
@@ -28,8 +30,10 @@ from agentd.runtime.events import (
     ToolStarted,
 )
 from agentd.runtime.runner import AgentRunner
+from agentd.services.conversation import ConversationService
 from agentd.storage.db import Database
-from agentd.tools.builtin import BUILTIN_TOOLS
+from agentd.storage.repositories import ProjectRepository, SessionRepository
+from agentd.tools import build_workspace_tools
 from agentd.tools.registry import ToolRegistry
 
 
@@ -91,13 +95,18 @@ async def _chat_repl(
     *,
     input_fn: Callable[[str], str] = input,
     print_fn: Callable[..., None] = print,
+    history: list[ChatMessage] | None = None,
+    on_turn: Callable[[list[ChatMessage]], Awaitable[None]] | None = None,
 ) -> int:
     """多轮对话 REPL；input/print 可注入（测试与演示共用同一条路径）。
 
-    返回 0；失败的轮次不写回历史（M2 落库时沿用该语义）。
+    history 传入初始历史（DB 加载）；on_turn 在每轮成功后收到完整交换
+    （user + assistant/tool 消息），由调用方落库。失败的轮次不写回历史。
+    返回 0。
     """
-    history: list[ChatMessage] = []
-    print_fn("[agentd chat] 工具：echo、get_time；输入 exit 退出（Ctrl+C 中断会话）")
+    history = history if history is not None else []
+    tools_note = "、".join(runner.tools.names()) if runner.tools else "（无）"
+    print_fn(f"[agentd chat] 工具：{tools_note}；输入 exit 退出（Ctrl+C 中断会话）")
     while True:
         try:
             line = input_fn("\nyou> ").strip()
@@ -127,9 +136,33 @@ async def _chat_repl(
             elif isinstance(event, RunFailed):
                 print_fn(f"\n[failed:{event.code}] {event.message}")
         print_fn()
-        if final is not None:
-            history.append(ChatMessage(role="user", content=line))
-            history.append(ChatMessage(role="assistant", content=final))
+        if final is not None and runner.last_exchange:
+            history.extend(runner.last_exchange)
+            if on_turn is not None:
+                await on_turn(runner.last_exchange)
+
+
+async def _open_cli_session(
+    db: Database, settings: Settings, label: str
+) -> tuple[dict[str, Any], list[ChatMessage], ConversationService]:
+    """打开（或创建）CLI 标签对应的会话并加载历史；默认项目 workspace 指向配置根。"""
+    projects = ProjectRepository(db)
+    project = await projects.get_by_name("default")
+    if project is None:
+        workspace = Path(settings.workspace_root or settings.data_dir / "workspace")
+        project = await projects.create(name="default", workspace_path=str(workspace))
+    sessions = SessionRepository(db)
+    existing = await sessions.list_by_project(project["id"], limit=100)
+    mine = [row for row in existing if row["external_user_id"] == "cli" and row["title"] == label]
+    if mine:
+        session = mine[0]
+    else:
+        session = await sessions.create(
+            project_id=project["id"], external_user_id="cli", title=label
+        )
+    conversation = ConversationService(db, token_budget=settings.context_token_budget)
+    history = await conversation.load_history(session["id"])
+    return session, history, conversation
 
 
 def _cmd_chat(args: argparse.Namespace) -> int:
@@ -145,19 +178,41 @@ def _cmd_chat(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
-    registry = ToolRegistry(tool_timeout_s=settings.run_tool_timeout_s).register_all(BUILTIN_TOOLS)
-    runner = AgentRunner(
-        provider,
-        tools=registry,
-        session_id=f"s_cli_{args.session}",
-        max_iterations=settings.run_max_iterations,
-        timeout_s=settings.run_timeout_s,
+    db = Database(settings.db_path or settings.data_dir / "agentd.db",
+                  busy_timeout_ms=settings.sqlite_busy_timeout_ms)
+    db.migrate()
+    registry = ToolRegistry(tool_timeout_s=settings.run_tool_timeout_s).register_all(
+        build_workspace_tools(
+            Path(settings.workspace_root or settings.data_dir / "workspace"),
+            enable_shell=settings.enable_shell_tool,
+            web_fetch=settings.web_fetch_enabled,
+        )
     )
+
+    async def amain() -> int:
+        session, history, conversation = await _open_cli_session(db, settings, args.session)
+        print(f"[agentd chat] session={session['id']} 已载入 {len(history)} 条历史消息")
+
+        async def persist(exchange: list[ChatMessage]) -> None:
+            await conversation.persist_exchange(session["id"], exchange)
+
+        runner = AgentRunner(
+            provider,
+            tools=registry,
+            run_id=f"r_cli_{args.session}",
+            session_id=session["id"],
+            max_iterations=settings.run_max_iterations,
+            timeout_s=settings.run_timeout_s,
+        )
+        return await _chat_repl(runner, history=history, on_turn=persist)
+
     try:
-        return asyncio.run(_chat_repl(runner))
+        return asyncio.run(amain())
     except KeyboardInterrupt:
         print("\n(bye)")
         return 0
+    finally:
+        db.close()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -172,8 +227,8 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--reload", action="store_true", help="开发模式热重载")
     serve.set_defaults(func=_cmd_serve)
 
-    chat = sub.add_parser("chat", help="终端多轮对话（M1；会话持久化随 M2 落地）")
-    chat.add_argument("--session", default="demo", help="会话标签（仅展示，M2 起落库）")
+    chat = sub.add_parser("chat", help="终端多轮对话（会话按 --session 标签落库，重启续聊）")
+    chat.add_argument("--session", default="demo", help="会话标签（同一标签续聊同一会话）")
     chat.add_argument("--fake", action="store_true", help="离线脚本化 provider，无需 API key")
     chat.add_argument("--model", default=None, help="覆盖 AGENTD_LLM_MODEL")
     chat.set_defaults(func=_cmd_chat)
