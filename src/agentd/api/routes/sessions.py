@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 
 from agentd.api.auth import AuthDep
 from agentd.api.deps import DbDep
@@ -12,9 +12,24 @@ from agentd.api.errors import AppError, ErrorCode
 from agentd.api.schemas import CreateSessionIn, MessageOut, SessionOut
 from agentd.api.serialize import message_out, session_out
 from agentd.storage.db import Database
-from agentd.storage.repositories import MessageRepository, SessionRepository
+from agentd.storage.repositories import AuditRepository, MessageRepository, SessionRepository
 
 router = APIRouter(prefix="/v1/sessions", tags=["sessions"])
+
+
+async def audit(
+    db: Database,
+    *,
+    project_id: str,
+    actor: str,
+    action: str,
+    target: str | None = None,
+    detail: dict[str, Any] | None = None,
+    ip: str | None = None,
+) -> None:
+    await AuditRepository(db).append(
+        project_id=project_id, actor=actor, action=action, target=target, detail=detail, ip=ip
+    )
 
 
 async def get_session_or_404(db: Database, session_id: str, project_id: str) -> dict[str, Any]:
@@ -26,12 +41,25 @@ async def get_session_or_404(db: Database, session_id: str, project_id: str) -> 
 
 
 @router.post("", response_model=SessionOut, status_code=201)
-async def create_session(body: CreateSessionIn, auth: AuthDep, db: DbDep) -> SessionOut:
+async def create_session(
+    body: CreateSessionIn,
+    request: Request,
+    auth: AuthDep,
+    db: DbDep,
+) -> SessionOut:
     row = await SessionRepository(db).create(
         project_id=auth.project_id,
         external_user_id=body.external_user_id,
         title=body.title,
         metadata=body.metadata,
+    )
+    await audit(
+        db,
+        project_id=auth.project_id,
+        actor=auth.key_id,
+        action="session.created",
+        target=str(row["id"]),
+        ip=request.client.host if request.client else None,
     )
     return session_out(row)
 

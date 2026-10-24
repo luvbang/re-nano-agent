@@ -1,4 +1,4 @@
-"""/v1 管理与查询路由（M3）：admin keys（创建/列表/撤销）、models、usage 聚合。"""
+"""/v1 管理与查询路由（M3/M4）：admin keys、audit、models、usage 聚合。"""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query, Request
 from agentd.api.auth import AdminDep, AuthDep
 from agentd.api.deps import DbDep
 from agentd.api.errors import AppError, ErrorCode
+from agentd.api.routes.sessions import audit
 from agentd.api.schemas import (
     CreatedKeyOut,
     CreateKeyIn,
@@ -17,7 +18,7 @@ from agentd.api.schemas import (
 )
 from agentd.api.serialize import key_out
 from agentd.services.keys import generate_key
-from agentd.storage.repositories import ApiKeyRepository
+from agentd.storage.repositories import ApiKeyRepository, AuditRepository
 from agentd.tools.registry import ToolRegistry
 
 router = APIRouter(prefix="/v1", tags=["admin"])
@@ -33,7 +34,9 @@ async def list_keys(admin: AdminDep, db: DbDep) -> list[KeyOut]:
 
 
 @router.post("/admin/keys", response_model=CreatedKeyOut, status_code=201)
-async def create_key(body: CreateKeyIn, admin: AdminDep, db: DbDep) -> CreatedKeyOut:
+async def create_key(
+    body: CreateKeyIn, request: Request, admin: AdminDep, db: DbDep
+) -> CreatedKeyOut:
     secret, key_hash, prefix = generate_key()
     row = await ApiKeyRepository(db).create(
         project_id=admin.project_id,
@@ -43,11 +46,19 @@ async def create_key(body: CreateKeyIn, admin: AdminDep, db: DbDep) -> CreatedKe
         scopes="core",
         rate_limit_per_min=body.rate_limit_per_min,
     )
+    await audit(
+        db,
+        project_id=admin.project_id,
+        actor=admin.key_id,
+        action="key.created",
+        target=str(row["id"]),
+        ip=request.client.host if request.client else None,
+    )
     return CreatedKeyOut(key=key_out(row), secret=secret)
 
 
 @router.delete("/admin/keys/{key_id}", status_code=204)
-async def revoke_key(key_id: str, admin: AdminDep, db: DbDep) -> None:
+async def revoke_key(key_id: str, request: Request, admin: AdminDep, db: DbDep) -> None:
     row = await db.fetch_one(
         "SELECT * FROM api_keys WHERE id = ? AND project_id = ?",
         (key_id, admin.project_id),
@@ -55,6 +66,36 @@ async def revoke_key(key_id: str, admin: AdminDep, db: DbDep) -> None:
     if row is None:
         raise AppError(ErrorCode.NOT_FOUND, "key 不存在")
     await ApiKeyRepository(db).revoke(key_id)
+    await audit(
+        db,
+        project_id=admin.project_id,
+        actor=admin.key_id,
+        action="key.revoked",
+        target=key_id,
+        ip=request.client.host if request.client else None,
+    )
+
+
+@router.get("/admin/audit")
+async def list_audit(
+    request: Request,
+    admin: AdminDep,
+    db: DbDep,
+    limit: int = Query(default=100, ge=1, le=500),
+) -> list[dict[str, object]]:
+    rows = await AuditRepository(db).list_by_project(admin.project_id, limit=limit)
+    return [
+        {
+            "id": str(row["id"]),
+            "actor": str(row["actor"]),
+            "action": str(row["action"]),
+            "target": row["target"],
+            "detail": row["detail_json"],
+            "ip": row["ip"],
+            "created_at": str(row["created_at"]),
+        }
+        for row in rows
+    ]
 
 
 @router.get("/models", response_model=ModelsOut)

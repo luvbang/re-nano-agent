@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from typing import Any, cast
 
 from agentd.providers.base import ChatMessage, ToolCallWire
@@ -51,6 +52,30 @@ def _row_to_message(row: dict[str, Any]) -> ChatMessage:
     return msg
 
 
+def _summary_message(row: dict[str, Any]) -> ChatMessage:
+    """summary 行 → wire 消息（system 角色，供 provider 理解为历史背景）。"""
+    content: str | None = None
+    if row["content_json"] is not None:
+        try:
+            decoded = json.loads(row["content_json"])
+            content = decoded if isinstance(decoded, str) else row["content_json"]
+        except ValueError:
+            content = row["content_json"]
+    return ChatMessage(
+        role="system", content=f"以下是本会话更早历史的摘要：\n{content or ''}"
+    )
+
+
+def _transcript_text(prev_summary: ChatMessage | None, dropped: list[ChatMessage]) -> str:
+    parts: list[str] = []
+    if prev_summary is not None and prev_summary.get("content"):
+        parts.append(f"[上一份摘要]\n{prev_summary['content']}")
+    for msg in dropped:
+        if msg.get("content"):
+            parts.append(f"[{msg['role']}]\n{msg['content']}")
+    return "\n\n".join(parts)
+
+
 def estimate_messages(messages: list[ChatMessage]) -> int:
     total = 0
     for msg in messages:
@@ -88,10 +113,50 @@ class ConversationService:
         self.messages = MessageRepository(db)
         self.token_budget = token_budget
 
-    async def load_history(self, session_id: str) -> list[ChatMessage]:
+    async def load_history(
+        self,
+        session_id: str,
+        *,
+        summarizer: Callable[[str], Awaitable[str]] | None = None,
+    ) -> list[ChatMessage]:
+        """加载上下文（M4：超预算时优先摘要压缩，无压缩器退化为整轮丢弃）。
+
+        - 最近一条 role=summary 之后的消息是活历史；summary 压缩了它之前的全部轮次
+        - 活历史超预算且提供 summarizer：把被丢弃轮次（连同上一份摘要）压成新
+          summary 落库，上下文 = [summary] + 保留轮
+        - 压缩失败/无压缩器：退化为 M2 的直接裁剪（不失败 run）
+        """
         rows = await self.messages.list_by_session(session_id, limit=1_000)
-        history = [_row_to_message(row) for row in rows]
-        return trim_to_budget(history, budget_tokens=self.token_budget)
+        summary_idx: int | None = None
+        for i, row in enumerate(rows):
+            if row["role"] == "summary":
+                summary_idx = i
+        active_rows = rows[summary_idx + 1 :] if summary_idx is not None else rows
+        prev_summary = _summary_message(rows[summary_idx]) if summary_idx is not None else None
+        active = [_row_to_message(row) for row in active_rows]
+        head = [prev_summary] if prev_summary is not None else []
+
+        if estimate_messages(head + active) <= self.token_budget:
+            return head + active
+        kept = trim_to_budget(active, budget_tokens=self.token_budget)
+        dropped = active[: len(active) - len(kept)]
+        if not dropped or summarizer is None:
+            return kept
+        transcript = _transcript_text(prev_summary, dropped)
+        try:
+            summary_text = await summarizer(transcript)
+        except Exception:
+            logger.warning("context.summarize_failed")
+            return kept
+        if not summary_text.strip():
+            return kept
+        row = await self.messages.append(
+            session_id,
+            role="summary",
+            content=summary_text,
+            meta={"covers_messages": len(dropped)},
+        )
+        return [_summary_message(row)] + kept
 
     async def persist_exchange(self, session_id: str, exchange: list[ChatMessage]) -> None:
         for msg in exchange:

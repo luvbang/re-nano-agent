@@ -17,7 +17,7 @@ from fastapi.responses import StreamingResponse
 from agentd.api.auth import AuthDep
 from agentd.api.deps import DbDep, SettingsDep
 from agentd.api.errors import AppError, ErrorCode
-from agentd.api.routes.sessions import get_session_or_404
+from agentd.api.routes.sessions import audit, get_session_or_404
 from agentd.api.schemas import CreateRunIn, RunIdOut, RunOut
 from agentd.api.serialize import is_terminal_status, run_out
 from agentd.providers.base import Provider
@@ -68,6 +68,15 @@ async def create_run(
         tools=tools,
         settings=settings,
     )
+    await audit(
+        db,
+        project_id=auth.project_id,
+        actor=auth.key_id,
+        action="run.created",
+        target=str(run["id"]),
+        detail={"session_id": str(session["id"])},
+        ip=request.client.host if request.client else None,
+    )
     if idem_key:
         store[idem_key] = (str(run["id"]), now + IDEMPOTENCY_TTL_S)
         _evict_expired(store, now)
@@ -86,10 +95,20 @@ async def get_run(run_id: str, auth: AuthDep, db: DbDep) -> RunOut:
 
 
 @router.post("/runs/{run_id}/cancel", response_model=RunOut)
-async def cancel_run(run_id: str, request: Request, auth: AuthDep, db: DbDep) -> RunOut:
+async def cancel_run(
+    run_id: str, request: Request, auth: AuthDep, db: DbDep
+) -> RunOut:
     await _get_run_or_404(db, run_id, auth.project_id)
     service: RunService = request.app.state.runs
     row = await service.cancel(run_id)
+    await audit(
+        db,
+        project_id=auth.project_id,
+        actor=auth.key_id,
+        action="run.cancelled",
+        target=run_id,
+        ip=request.client.host if request.client else None,
+    )
     return run_out(row)
 
 

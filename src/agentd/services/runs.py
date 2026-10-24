@@ -14,11 +14,12 @@ import contextlib
 import json
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from agentd.api.errors import AppError, ErrorCode
 from agentd.config import Settings
-from agentd.providers.base import Provider, Usage
+from agentd.providers.base import ChatMessage, Provider, TextDelta, Usage
 from agentd.runtime.events import (
     MessageCompleted,
     MessageDelta,
@@ -33,7 +34,7 @@ from agentd.runtime.events import (
 from agentd.runtime.runner import AgentRunner
 from agentd.services.conversation import ConversationService
 from agentd.storage.db import Database
-from agentd.storage.repositories import RunRepository, SessionRepository
+from agentd.storage.repositories import RunRepository, SessionRepository, new_id
 from agentd.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,33 @@ def event_to_envelope(event: RunEvent, seq: int) -> dict[str, Any]:
 
 def _now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _make_summarizer(provider: Provider) -> Callable[[str], Awaitable[str]]:
+    """用当前 provider 生成历史摘要（M4 压缩）；一次非流式收集，失败由调用方兜底。"""
+
+    async def summarize(transcript: str) -> str:
+        messages = [
+            ChatMessage(
+                role="system",
+                content=(
+                    "你是会话历史压缩器。把给定对话压缩为一段保留关键事实、"
+                    "决定与结论的简短摘要，直接输出摘要正文。"
+                ),
+            ),
+            ChatMessage(role="user", content=transcript),
+        ]
+        chunks: list[str] = []
+        stream = provider.chat(messages)
+        try:
+            async for event in stream:
+                if isinstance(event, TextDelta):
+                    chunks.append(event.text)
+        finally:
+            await stream.aclose()
+        return "".join(chunks)
+
+    return summarize
 
 
 class RunService:
@@ -205,7 +233,9 @@ class RunService:
         final_status = "completed"
         runner: AgentRunner | None = None
         try:
-            history = await conversation.load_history(session_id)
+            history = await conversation.load_history(
+                session_id, summarizer=_make_summarizer(provider)
+            )
             runner = AgentRunner(
                 provider,
                 tools=tools,
@@ -216,6 +246,7 @@ class RunService:
             )
             await self.runs.set_status(run_id, "running")
             seq = 0
+            tool_args: dict[str, dict[str, Any]] = {}
             async for event in runner.run(history, input):
                 seq += 1
                 envelope = event_to_envelope(event, seq)
@@ -223,6 +254,10 @@ class RunService:
                     await self._persist_event(run_id, envelope)
                 self._publish(run_id, envelope)
                 match event:
+                    case ToolStarted():
+                        tool_args[event.tool_call_id] = dict(event.args)
+                    case ToolCompleted():
+                        await self._record_tool_call(run_id, event, tool_args)
                     case RunCompleted():
                         usage_total = event.usage
                     case RunFailed():
@@ -255,6 +290,24 @@ class RunService:
                 await SessionRepository(self.db).touch(session_id)
         finally:
             self._close(run_id)
+
+    async def _record_tool_call(
+        self, run_id: str, event: ToolCompleted, tool_args: dict[str, dict[str, Any]]
+    ) -> None:
+        """工具调用审计（M4）：tool_calls 表，一行一次调用；结果内容不入库。"""
+        await self.db.execute(
+            "INSERT INTO tool_calls (id, run_id, tool_call_id, name, args_json, status,"
+            " duration_ms) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                new_id("tc"),
+                run_id,
+                event.tool_call_id,
+                event.name,
+                json.dumps(tool_args.get(event.tool_call_id, {}), ensure_ascii=False),
+                event.status,
+                event.duration_ms,
+            ),
+        )
 
     async def _persist_event(self, run_id: str, envelope: dict[str, Any]) -> None:
         await self.db.execute(

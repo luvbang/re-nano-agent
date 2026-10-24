@@ -108,6 +108,47 @@ class SessionRepository(Repository):
         )
 
 
+class AuditRepository(Repository):
+    """审计日志（M4）：关键操作（key/run/session）落库；prompt 全文不入审计。"""
+
+    async def append(
+        self,
+        *,
+        project_id: str | None,
+        actor: str,
+        action: str,
+        target: str | None = None,
+        detail: dict[str, Any] | None = None,
+        ip: str | None = None,
+    ) -> dict[str, Any]:
+        audit_id = new_id("a")
+        await self.db.execute(
+            "INSERT INTO audit_logs (id, project_id, actor, action, target, detail_json, ip)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                audit_id,
+                project_id,
+                actor,
+                action,
+                target,
+                json.dumps(detail or {}, ensure_ascii=False),
+                ip,
+            ),
+        )
+        row = await self.db.fetch_one("SELECT * FROM audit_logs WHERE id = ?", (audit_id,))
+        assert row is not None
+        return row
+
+    async def list_by_project(
+        self, project_id: str, *, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        return await self.db.fetch_all(
+            "SELECT * FROM audit_logs WHERE project_id = ? ORDER BY created_at DESC, id DESC"
+            " LIMIT ?",
+            (project_id, limit),
+        )
+
+
 class MessageRepository(Repository):
     """会话消息（M2）：seq 在 session 内单调递增，单写者串行化下 max+1 安全。"""
 
