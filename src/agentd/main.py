@@ -11,6 +11,7 @@ import logging
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 
@@ -66,4 +67,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(RequestIDMiddleware, header_name=settings.request_id_header)
     register_error_handlers(app)
     app.include_router(health_router)
+    _mount_web_console(app)
     return app
+
+
+def _mount_web_console(app: FastAPI) -> None:
+    """构建产物存在则由后端同源服务（web-architecture §8）；无 dist 时静默跳过。"""
+    dist = Path(__file__).resolve().parents[2] / "web" / "dist"
+    if not (dist / "index.html").is_file():
+        return
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/", StaticFiles(directory=dist, html=True), name="web")
