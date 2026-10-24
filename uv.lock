@@ -6,6 +6,12 @@ resolution-markers = [
     "python_full_version < '3.15'",
 ]
 
+[manifest]
+members = [
+    "agentd",
+    "agentd-client",
+]
+
 [[package]]
 name = "agentd"
 version = "0.1.0"
@@ -21,6 +27,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "agentd-client" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -41,6 +48,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "agentd-client", editable = "sdk/agentd_client" },
     { name = "mypy", specifier = ">=1.10" },
     { name = "pytest", specifier = ">=8.2" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
@@ -48,6 +56,17 @@ dev = [
     { name = "respx", specifier = ">=0.21" },
     { name = "ruff", specifier = ">=0.5" },
 ]
+
+[[package]]
+name = "agentd-client"
+version = "0.1.0"
+source = { editable = "sdk/agentd_client" }
+dependencies = [
+    { name = "httpx" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "httpx", specifier = ">=0.27" }]
 
 [[package]]
 name = "annotated-doc"
