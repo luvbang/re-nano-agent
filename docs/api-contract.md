@@ -28,7 +28,7 @@ GET    /v1/admin/keys                     # 管理员：创建/撤销 key
 GET    /healthz  /readyz  /metrics        # 运维
 ```
 
-M0 已实现：`/healthz`、`/readyz`。其余端点在 M1–M4 按里程碑落地，路径与请求/响应形状以本文档为准。
+M0 已实现：`/healthz`、`/readyz`。M3 已实现：`/v1/sessions*`、`/v1/sessions/{id}/runs`、`/v1/runs/{id}`、`/v1/runs/{id}/events`、`/v1/runs/{id}/cancel`、`/v1/models`、`/v1/usage`、`/v1/admin/projects`、`/v1/admin/keys`、`/v1/admin/keys/{id}/revoke`、`/v1/admin/stats`（本节为 M3 新增的管理端点）。M4 落地 SDK；未配置模型 key 时 runs 相关端点返回 502 model_error。
 
 ### 2.1 运维端点（M0 已实现）
 
@@ -54,6 +54,7 @@ event: tool.completed     data: {"seq":5,"tool_call_id":"t_1","status":"ok","dur
 event: message.completed  data: {"seq":6,"content":"完整回答","usage":{"input_tokens":...}}
 event: run.completed      data: {"seq":7,"run_id":"r_...","usage":{...}}
 event: run.failed         data: {"seq":8,"error":{"code":"model_error","message":"...","retryable":true}}
+event: run.cancelled      data: {"seq":9,"run_id":"r_...","reason":"cancelled"}   # M3 新增
 : ping                                                                # 每 15s
 ```
 

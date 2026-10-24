@@ -4,6 +4,30 @@
 
 ## [Unreleased]
 
+## [v0.1.0-m3] - 2026-10-24
+
+M3：平台 API + 鉴权 + 并发（对外的门面）。
+
+### Added
+
+- 鉴权：`Authorization: Bearer agd_...` → project（每请求实时查库，撤销立即生效）；key 只存 sha256+前 12 位；管理员双通道（`AGENTD_ADMIN_KEY` 或 DB admin scope）
+- 管理端点：`POST/GET /v1/admin/projects`、`POST/GET /v1/admin/keys`、`POST /v1/admin/keys/{id}/revoke`
+- 会话端点：`POST/GET /v1/sessions`、`GET /v1/sessions/{id}/messages`（seq 升序 + before_seq 分页 + has_more）
+- runs：`POST /v1/sessions/{id}/runs`（202 + `Idempotency-Key` 5 分钟窗口，迁移 002）、`GET /v1/runs/{id}`、`POST /v1/runs/{id}/cancel`；RunManager——per-session 串行（忙时 409）、全局+per-project 信号量（超并发保持 queued）、事件先落库再广播、优雅停机兜底
+- SSE：`GET /v1/runs/{id}/events`——契约事件名 + id:seq、`Last-Event-ID` 回放（delta 不入库）、15s 心跳；新增契约事件 `run.cancelled`；kill -9 后新进程收敛 interrupted 并合成 `run.failed(interrupted)`
+- 限流：令牌桶 per-key RPM（key 级配置）+ 全局；429 + Retry-After；admin 端点不限流
+- 平台端点：`GET /v1/usage?group_by=day|model`（日期过滤）、`GET /v1/models`、`GET /v1/admin/stats`
+- 工具：`scripts/smoke.sh`（curl 全链路冒烟）、`scripts/loadtest.py`（并发压测 + p50/p95）
+- 未配置模型 key 时 /v1/runs 返回 502 model_error（健康检查不受影响）
+
+### DoD 证据
+
+- 152 测试全绿（分支覆盖 89%）；进程内 20 并发 run 无 5xx、取消后无残留；kill -9 恢复订阅与中途重连有集成测试
+
+### Known issues
+
+- 限流器进程内存态（重启清零）；OpenAPI/SSE schema 快照测试未做（M6）
+
 ## [v0.1.0-m2] - 2026-10-24
 
 M2：会话持久化 + 上下文预算 + 真工具 + 安全边界。

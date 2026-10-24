@@ -123,3 +123,34 @@
 - SSRF 的 DNS rebinding 残余窗口（校验与连接间）→ v0.2 pinned transport
 - 工具 JSON Schema 校验（additionalProperties）仍未做 → M3
 - `tests/security` 的软链用例依赖类 Unix，Windows 开发机本地跳过（CI 全跑）
+
+---
+
+## 2026-10-24（M3 D1–D5 合并执行）
+
+**完成**
+- D1 鉴权：Bearer→project（实时查库，撤销即效）、agd_ key（sha256+prefix，明文仅创建返回一次）、admin 双通道（env key / DB admin scope）、/v1/admin/projects|keys、/v1/sessions(+messages 分页)
+- D2 runs：RunManager（per-session 锁忙时 409、全局+项目信号量、事件先落库再广播）、POST runs（Idempotency-Key，迁移 002）、GET run、cancel、SSE 端点（契约事件名+seq、Last-Event-ID 回放、15s 心跳、run.cancelled 新增契约事件）
+- D3 限流与平台端点：令牌桶（per-key RPM + 全局，惰性结算）、429+Retry-After、/v1/usage（day|model 聚合+日期过滤）、/v1/models、/v1/admin/stats
+- D4 恢复：kill -9 场景（新进程收敛 interrupted + SSE 合成 run.failed(interrupted)）、活跃 run 中途重连不丢终态、优雅停机兜底扫描（未调度任务不留 queued）
+- D5 冒烟与压测：scripts/smoke.sh（curl 全链路）、scripts/loadtest.py（asyncio 并发+分位延迟）、进程内 20 并发测试进 CI
+
+**证据**
+- `ruff`/`mypy`（70 files）/`pytest` 全绿；152 测试（unit 74 + integration 42 + security 36），分支覆盖 89%
+- 20 并发（20 key × 各自 session）全部 completed 无 5xx；取消后同 session 可续跑（无残留锁）
+- kill -9 模拟：DB 留 running + run.started 落库 → 新进程 GET run=interrupted、SSE 回放+合成终态
+- SSE 重连：Last-Event-ID=1 不重复 run.started，终态全文到达
+
+**明日 3 件（M4 D1）**
+1. Python SDK：Client/Sessions/Runs/Usage 同步+异步、SSE 迭代器、错误映射、自动重试
+2. usage 价格表配置（$/1M tokens）+ cost_usd 填充 + 按日聚合
+3. audit log（run 创建/取消、key 创建/撤销、工具调用）+ 日志脱敏
+
+**阻塞**
+- 同 M1/M2：无 VPS/域名、无真实模型 key（human-checklist）
+- smoke.sh/loadtest.py 需要跑在真实服务器上（本地 fake 已覆盖同等形态）
+
+**技术债（只登记不修）**
+- OpenAPI/SSE schema 快照测试未做 → M6 文档阶段补
+- SSE 心跳 15s 在测试中未显式覆盖（超时路径代码简单）
+- 限流器为进程内存态：重启清零（单实例可接受）；多实例需换 Redis（v0.2）
