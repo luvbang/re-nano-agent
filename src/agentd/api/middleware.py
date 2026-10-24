@@ -49,6 +49,10 @@ class RequestIDMiddleware:
             await self.app(scope, receive, send_with_id)
         finally:
             duration_ms = round((time.perf_counter() - started) * 1000, 2)
+            metrics = getattr(getattr(scope.get("app"), "state", None), "metrics", None)
+            if metrics is not None:
+                metrics.inc("agentd_http_requests_total", status=str(status_code))
+                metrics.observe("agentd_http_request_duration_seconds", duration_ms / 1000)
             logger.info(
                 "http.request",
                 extra={

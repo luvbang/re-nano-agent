@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from agentd.api.errors import register_error_handlers
+from agentd.api.metrics import Metrics
 from agentd.api.middleware import RequestIDMiddleware
 from agentd.api.routes.health import router as health_router
 from agentd.config import APP_VERSION, Settings, get_settings
@@ -28,7 +29,11 @@ logger = logging.getLogger(__name__)
 
 
 def _build_run_manager(
-    settings: Settings, db: Database, provider: Provider | None
+    settings: Settings,
+    db: Database,
+    provider: Provider | None,
+    *,
+    metrics: Metrics | None = None,
 ) -> RunManager | None:
     """无模型配置时返回 None（/v1/runs 返回 502 model_error，健康检查不受影响）。"""
     from agentd.providers.openai_compat import OpenAICompatProvider
@@ -76,6 +81,7 @@ def _build_run_manager(
         model=model,
         usage_service=UsageService(db, parse_price_table(settings.llm_price_table)),
         compactor=HistoryCompactor(db, provider, context_builder=context_builder),
+        metrics=metrics,
         runner_kwargs={
             "max_iterations": settings.run_max_iterations,
             "timeout_s": settings.run_timeout_s,
@@ -104,7 +110,9 @@ def create_app(settings: Settings | None = None, *, provider: Provider | None = 
         recovered = await RunRepository(db).recover_interrupted()
         if recovered:
             logger.warning("runs.interrupted", extra={"count": recovered})
-        app.state.run_manager = _build_run_manager(settings, db, provider)
+        app.state.run_manager = _build_run_manager(
+            settings, db, provider, metrics=app.state.metrics
+        )
         from agentd.security.ratelimit import RateLimiter
 
         app.state.rate_limiter = RateLimiter(global_per_min=settings.ratelimit_global_per_min)
@@ -129,6 +137,7 @@ def create_app(settings: Settings | None = None, *, provider: Provider | None = 
     )
     app.state.settings = settings
     app.state.db = db
+    app.state.metrics = Metrics()
     app.state.started_at = time.monotonic()
 
     from agentd.api.body_limit import BodySizeLimitMiddleware

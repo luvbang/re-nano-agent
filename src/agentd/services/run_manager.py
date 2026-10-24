@@ -12,10 +12,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
 from agentd.api.errors import AppError, ErrorCode
+from agentd.api.metrics import Metrics
 from agentd.providers.base import Provider
 from agentd.runtime.compaction import HistoryCompactor
 from agentd.runtime.events import (
@@ -120,6 +122,7 @@ class RunManager:
         project_concurrency: int = 4,
         usage_service: UsageService | None = None,
         compactor: HistoryCompactor | None = None,
+        metrics: Metrics | None = None,
     ) -> None:
         self.db = db
         self.provider = provider
@@ -129,6 +132,7 @@ class RunManager:
         self.runner_kwargs = runner_kwargs or {}
         self.service = ChatService(db, usage_service=usage_service, compactor=compactor)
         self.audit = AuditRepository(db)
+        self.metrics = metrics
         self.events = RunEventRepository(db)
         self.runs = RunRepository(db)
         self._active: dict[str, ActiveRun] = {}
@@ -190,6 +194,7 @@ class RunManager:
         return run
 
     async def _execute(self, run: dict[str, Any], user_input: str) -> None:
+        started_at = time.monotonic()
         run_id = str(run["id"])
         session_id = str(run["session_id"])
         project_id = str(run["project_id"])
@@ -231,6 +236,11 @@ class RunManager:
                 persist=True,
             )
         finally:
+            if self.metrics is not None:
+                status_row = await self.runs.get(run_id)
+                final_status = str(status_row["status"]) if status_row else "unknown"
+                self.metrics.inc("agentd_runs_total", status=final_status)
+                self.metrics.observe("agentd_run_duration_seconds", time.monotonic() - started_at)
             if stream is not None:
                 await stream.aclose()
             lock = self._session_locks.get(session_id)
@@ -279,12 +289,20 @@ class RunManager:
             raise AppError(ErrorCode.NOT_FOUND, f"run 不在运行中：{run_id}")
         queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
         active.subscribers.add(queue)
+        if self.metrics is not None:
+            self.metrics.gauge(
+                "agentd_sse_active_subscribers", len(active.subscribers)
+            )
         return queue
 
     def unsubscribe(self, run_id: str, queue: asyncio.Queue[dict[str, Any] | None]) -> None:
         active = self._active.get(run_id)
         if active is not None:
             active.subscribers.discard(queue)
+            if self.metrics is not None:
+                self.metrics.gauge(
+                    "agentd_sse_active_subscribers", len(active.subscribers)
+                )
 
     async def cancel(self, run_id: str) -> dict[str, Any]:
         active = self._active.get(run_id)
