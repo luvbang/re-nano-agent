@@ -11,11 +11,11 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 
 from agentd.config import APP_VERSION, Settings, get_settings
 from agentd.log import configure_logging
-from agentd.providers.base import ChatMessage, Provider
+from agentd.providers.base import Provider
 from agentd.providers.fake import FakeChatProvider, demo_turn
 from agentd.providers.openai_compat import OpenAICompatProvider
 from agentd.providers.retry import RetryingProvider
@@ -23,12 +23,14 @@ from agentd.runtime.events import (
     MessageCompleted,
     MessageDelta,
     RunCompleted,
+    RunEvent,
     RunFailed,
     ToolCompleted,
     ToolStarted,
 )
-from agentd.runtime.runner import AgentRunner
+from agentd.services.chat_service import ChatService
 from agentd.storage.db import Database
+from agentd.storage.repositories import ProjectRepository, SessionRepository
 from agentd.tools.builtin import BUILTIN_TOOLS
 from agentd.tools.registry import ToolRegistry
 
@@ -86,18 +88,19 @@ def _build_chat_provider(args: argparse.Namespace, settings: Settings) -> Provid
     return RetryingProvider(inner, max_retries=settings.llm_retries)
 
 
+TurnFn = Callable[[str], AsyncIterator[RunEvent]]
+
+
 async def _chat_repl(
-    runner: AgentRunner,
+    turn: TurnFn,
     *,
     input_fn: Callable[[str], str] = input,
     print_fn: Callable[..., None] = print,
 ) -> int:
-    """多轮对话 REPL；input/print 可注入（测试与演示共用同一条路径）。
+    """多轮对话 REPL；turn(text) 产出一轮事件流（历史归 turn 的实现管）。
 
-    返回 0；失败的轮次不写回历史（M2 落库时沿用该语义）。
+    input/print 可注入（测试与演示共用同一条路径）；返回 0。
     """
-    history: list[ChatMessage] = []
-    print_fn("[agentd chat] 工具：echo、get_time；输入 exit 退出（Ctrl+C 中断会话）")
     while True:
         try:
             line = input_fn("\nyou> ").strip()
@@ -108,9 +111,8 @@ async def _chat_repl(
             continue
         if line in {"exit", "quit"}:
             return 0
-        final: str | None = None
         usage_note = ""
-        async for event in runner.run(history, line):
+        async for event in turn(line):
             if isinstance(event, MessageDelta):
                 print_fn(event.delta, end="", flush=True)
             elif isinstance(event, ToolStarted):
@@ -118,7 +120,6 @@ async def _chat_repl(
             elif isinstance(event, ToolCompleted):
                 print_fn(f"[tool] {event.name} {event.status} {event.duration_ms}ms")
             elif isinstance(event, MessageCompleted):
-                final = event.content
                 usage_note = (
                     f"\n[usage] in={event.usage.input_tokens} out={event.usage.output_tokens}"
                 )
@@ -127,9 +128,6 @@ async def _chat_repl(
             elif isinstance(event, RunFailed):
                 print_fn(f"\n[failed:{event.code}] {event.message}")
         print_fn()
-        if final is not None:
-            history.append(ChatMessage(role="user", content=line))
-            history.append(ChatMessage(role="assistant", content=final))
 
 
 def _cmd_chat(args: argparse.Namespace) -> int:
@@ -145,16 +143,57 @@ def _cmd_chat(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
-    registry = ToolRegistry(tool_timeout_s=settings.run_tool_timeout_s).register_all(BUILTIN_TOOLS)
-    runner = AgentRunner(
-        provider,
-        tools=registry,
-        session_id=f"s_cli_{args.session}",
-        max_iterations=settings.run_max_iterations,
-        timeout_s=settings.run_timeout_s,
+    settings.ensure_dirs()
+    db = Database(
+        settings.db_path or settings.data_dir / "agentd.db",
+        busy_timeout_ms=settings.sqlite_busy_timeout_ms,
     )
+    db.migrate()
+
+    async def main() -> int:
+        projects = ProjectRepository(db)
+        sessions = SessionRepository(db)
+        service = ChatService(db)
+        project = await projects.get_or_create(
+            name="local", workspace_path=str(settings.workspace_root)
+        )
+        session = await sessions.get_or_create_by_title(
+            str(project["id"]), args.session, external_user_id="cli"
+        )
+        registry = ToolRegistry(tool_timeout_s=settings.run_tool_timeout_s).register_all(
+            BUILTIN_TOOLS
+        )
+        model = "fake-demo" if args.fake else (args.model or settings.llm_model)
+        session_id = str(session["id"])
+        project_id = str(project["id"])
+
+        async def turn(text: str) -> AsyncIterator[RunEvent]:
+            async for event in service.stream(
+                session_id,
+                project_id=project_id,
+                user_input=text,
+                provider=provider,
+                model=model,
+                tools=registry,
+                runner_kwargs={
+                    "max_iterations": settings.run_max_iterations,
+                    "timeout_s": settings.run_timeout_s,
+                },
+            ):
+                yield event
+
+        print_fn: Callable[..., None] = print
+        print_fn(
+            f"[agentd chat] session={args.session}（已落库，重启可续聊）"
+            " 工具：echo、get_time；exit 退出"
+        )
+        try:
+            return await _chat_repl(turn)
+        finally:
+            db.close()
+
     try:
-        return asyncio.run(_chat_repl(runner))
+        return asyncio.run(main())
     except KeyboardInterrupt:
         print("\n(bye)")
         return 0

@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from collections.abc import AsyncGenerator, Sequence
+from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
 from typing import Any
 
 from agentd.providers.base import (
@@ -82,6 +82,7 @@ class AgentRunner:
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
         max_iterations: int = 8,
         timeout_s: float = 600.0,
+        on_message: Callable[[ChatMessage], Awaitable[None]] | None = None,
     ) -> None:
         self.provider = provider
         self.tools = tools
@@ -90,16 +91,22 @@ class AgentRunner:
         self.system_prompt = system_prompt
         self.max_iterations = max_iterations
         self.timeout_s = timeout_s
+        self.on_message = on_message
 
     async def run(
         self, history: Sequence[ChatMessage], user_input: str
     ) -> AsyncGenerator[RunEvent, None]:
-        """执行一轮对话；事件序列以 RunStarted 开头，以 RunCompleted 或 RunFailed 结尾。"""
+        """执行一轮对话；事件序列以 RunStarted 开头，以 RunCompleted 或 RunFailed 结尾。
+
+        on_message 钩子按发生顺序收到 user / assistant(含 tool_calls) / tool /
+        最终 assistant 消息（system 可由配置重建，不走钩子）——供持久层落库。
+        """
         messages: list[ChatMessage] = [
             ChatMessage(role="system", content=self.system_prompt),
             *history,
             ChatMessage(role="user", content=user_input),
         ]
+        await self._notify(messages[-1])
         yield RunStarted(run_id=self.run_id, session_id=self.session_id)
         usage_total = _UsageTotals()
         drive = self._drive(messages, usage_total)
@@ -148,38 +155,46 @@ class AgentRunner:
                 await stream.aclose()
             usage = usage_total.usage()
             if not calls:
+                final_message = ChatMessage(role="assistant", content=text)
+                await self._notify(final_message)
                 yield MessageCompleted(content=text, usage=usage)
                 yield RunCompleted(usage=usage)
                 return
             if iteration == self.max_iterations - 1:
                 raise MaxModelCallsError(self.max_iterations)
-            messages.append(
-                ChatMessage(
-                    role="assistant",
-                    content=text or None,
-                    tool_calls=[_to_wire(call) for call in calls],
-                )
+            assistant_message = ChatMessage(
+                role="assistant",
+                content=text or None,
+                tool_calls=[_to_wire(call) for call in calls],
             )
+            messages.append(assistant_message)
+            await self._notify(assistant_message)
             for call in calls:
                 args = _parse_args(call.arguments)
                 yield ToolStarted(tool_call_id=call.id, name=call.name, args=args)
                 started = time.perf_counter()
                 result = await self._execute(call)
                 duration_ms = int((time.perf_counter() - started) * 1000)
+                tool_message = ChatMessage(
+                    role="tool", content=result.content, tool_call_id=call.id
+                )
+                messages.append(tool_message)
+                await self._notify(tool_message)
                 yield ToolCompleted(
                     tool_call_id=call.id,
                     name=call.name,
                     status="error" if result.is_error else "ok",
                     duration_ms=duration_ms,
                 )
-                messages.append(
-                    ChatMessage(role="tool", content=result.content, tool_call_id=call.id)
-                )
 
     async def _execute(self, call: ToolCallCompleted) -> ToolResult:
         if self.tools is None:
             return ToolResult.error(f"工具 {call.name} 不存在：注册表未配置")
         return await self.tools.execute(call.name, call.arguments)
+
+    async def _notify(self, message: ChatMessage) -> None:
+        if self.on_message is not None:
+            await self.on_message(message)
 
 
 def _parse_args(arguments_json: str) -> dict[str, Any]:
