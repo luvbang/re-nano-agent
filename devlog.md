@@ -92,3 +92,32 @@
 - SSE 心跳/seq 编号属 M3 API 层；runner 事件目前无 seq
 - 工具 JSON Schema 校验（additionalProperties）未做 → M2 随真工具补
 - `Database` 读串行化、日志脱敏等 M0 遗留项不变
+
+---
+
+## 2026-10-24（M2 + M6 前端提前执行）
+
+> 背景：用户指示"按 ROADMAP 执行完整后进行前端代码编写"。M2（前端依赖的持久化/真工具/安全）与 M6 控制台前端同日完成；M3 `/v1` 端点未动工，前端按 web-architecture §7 以离线演示模式交付。
+
+**完成**
+
+- M2 D1 持久化：`MessageRepository`（seq 游标）、`ConversationService`（整轮粒度 token 裁剪、工具交换无损往返）、Runner `last_exchange`、CLI `--session` 标签跨进程续聊
+- M2 D3 安全+真工具：`security/paths.py`（穿越/绝对/软链/盘符相对拒绝）、`security/ssrf.py`（DNS 全记录公网校验、IPv4-mapped 解包、重定向逐跳）、`tools/filesystem.py`、`tools/shell.py`（默认关）、`tools/web.py`（SSRF+文本+128KB）
+- M6 控制台（web/，35 源文件）：六页面全量、SSE fetch 解析器（Last-Event-ID 重连/45s 心跳/退避封顶）、run 投影纯函数、离线演示客户端（脚本化事件流含工具回路）、FastAPI 同源挂载（SPA 回退/immutable 缓存/API 404 信封不变）、CI `web` job
+- 发现并修复两个真 bug：投影 `message.completed` 会清空同段工具卡；run 完成后不失效历史导致下一轮发送时上一轮从视图消失
+
+**证据**
+
+- 后端：ruff / mypy（53 files）/ pytest **119 passed**（含穿越/软链/SSRF 全保留段/重定向拦截/重启续聊）
+- 前端：vitest **14 passed**；tsc + vite build 通过，gzip **194.63KB**（< 250KB 预算）
+- 浏览器实测（IAB，离线演示模式）：六页面渲染 ✓；Playground 三轮流式回答（Enter 与按钮两种提交）✓；工具卡"成功 · 418ms" ✓；usage 徽标 ✓；创建 Key 一次性 secret ✓；Usage 柱状图视觉确认 ✓
+- `agentd serve :18432`：`/playground`、`/keys` SPA 回退 200；`/v1/nope` 错误信封 `not_found`；assets `immutable`、index `no-cache`
+- CLI 重启续聊实跑：第二次启动 `已载入 10 条历史消息`（含工具轮 4 条消息）
+
+**技术债（只登记不修）**
+
+- M3 `/v1` 端点未落地：前端真实模式当前必然 401/网络错误，切真端点后需联调一轮（SSE 重连/回放实测）
+- SSRF 校验与实际连接间存在 TOCTOU 窗口（严格做法：pin IP 连接）
+- `agentd serve` 的 SPA catch-all 只注册 GET（HEAD 405，无实际影响）
+- recharts 体积占 bundle 大头，v0.2 若加页面再考虑 code-split
+- 工具 JSON Schema 参数校验（additionalProperties）仍未做 → 随 M3 契约层

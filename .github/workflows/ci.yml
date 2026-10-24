@@ -29,6 +29,27 @@ jobs:
       - name: pytest (coverage)
         run: uv run pytest -q --cov=agentd --cov-report=term
 
+  web:
+    name: web console build / test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install (locked)
+        run: npm ci
+      - name: vitest
+        run: npm test
+      - name: build (tsc --noEmit && vite build)
+        run: npm run build
+
   image:
     name: docker build
     runs-on: ubuntu-latest

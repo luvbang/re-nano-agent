@@ -4,6 +4,36 @@
 
 ## [Unreleased]
 
+### Added（M2：会话持久化 + 上下文 + 真工具 + 安全）
+
+- 安全边界：`security/paths.py`（workspace 路径关押：拒绝绝对路径/`..`/软链逃逸/盘符相对路径）、`security/ssrf.py`（DNS 全记录公网校验、IPv4-mapped 解包、每跳重定向校验、字面量 IP 直判）
+- 真工具：`read_file`/`write_file`/`list_dir`（读写上限与截断）、`run_command`（默认关闭，`AGENTD_ENABLE_SHELL_TOOL=1` 才注册；超时封顶 30s）、`web_fetch`（SSRF 校验、仅文本 Content-Type、128KB 截断、≤3 跳重定向）
+- 会话持久化：`MessageRepository`（seq 游标分页）、`ConversationService`（按整轮粒度的 token 预算裁剪、完整工具交换落库与无损重建）
+- Runner 暴露 `last_exchange`（成功轮的完整消息交换）；失败轮不落库（沿 M1 语义）
+- CLI `chat --session <label>`：同一标签跨进程续聊同一 DB 会话（重启恢复）
+- Settings：`context_token_budget`、`enable_shell_tool`、`web_fetch_*`
+
+### Added（M6 前置：Web 控制台）
+
+- `web/`：Vite 7 + React 18 + TypeScript(strict) + Tailwind 3 + TanStack Query 5 + react-router 7 + recharts（架构冻结见 docs/web-architecture.md）
+- 六页面：Login（管理员 key，sessionStorage）/ Playground（SSE 流式渲染、工具调用折叠卡、usage 徽标、失败条）/ Sessions（分页+续聊跳转）/ Keys（一次性 secret 展示、撤销）/ Usage（按天柱状图+按模型占比）/ Status（healthz/readyz）
+- `sse/run-stream.ts`：fetch+ReadableStream 手写 SSE 解析（EventSource 无法带 Bearer）、Last-Event-ID 重连、45s 心跳超时、指数退避封顶
+- `projection/run-projection.ts`：纯函数事件投影（message.completed 全文覆盖 delta、工具轮后开新段）
+- **离线演示模式**：M3 `/v1` 端点落地前，登录页一键进入内置演示数据（脚本化事件流含工具回路），全部页面可体验
+- FastAPI 同源服务 `web/dist`（SPA 路由回退、assets immutable 缓存、API 404 仍走错误信封）；CI 新增 `web` job（Node 22：npm ci + vitest + tsc/vite build）
+
+### Changed
+
+- `Database`：去掉冗余的 `PRAGMA busy_timeout`（`connect(timeout=…)` 等价设置，且避免拼接 SQL）
+- CLI chat 工具集升级为 workspace 工具（read_file/write_file/list_dir/web_fetch/echo/get_time）
+
+### DoD 证据
+
+- 后端：`ruff` / `mypy`（53 files）/ `pytest` 119 passed（含路径穿越、软链逃逸、SSRF 全保留段、SSRF 重定向拦截、重启续聊）
+- 前端：`vitest` 14 passed（投影契约序列 + SSE 解析边界）；`tsc --noEmit && vite build` 通过，bundle gzip 194.63KB（< 250KB 预算）
+- 浏览器实测（离线演示模式）：六页面渲染正常；Playground 连发三轮（Enter/按钮）流式回答、工具卡（成功·418ms）、usage 徽标、历史保留均正确；创建 Key 一次性 secret 展示正确
+- `agentd serve` 实测：`/`、`/playground`、`/keys` 200（SPA 回退）；`/v1/nope` 错误信封；assets `cache-control: immutable`、index `no-cache`
+
 ## [v0.1.0-m1] - 2026-10-24
 
 M1：Provider + Runner + 流式（核心闭环）。

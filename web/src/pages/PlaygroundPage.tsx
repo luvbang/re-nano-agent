@@ -37,6 +37,21 @@ export function PlaygroundPage() {
 
   const { projection, sending, send, cancel, reset } = useRunStream(client, sessionId);
 
+  // run 成功后：服务端已落库 → 刷新历史、以服务端真相渲染，再清空本轮流式投影
+  // （避免“下一轮发送时上一轮从视图消失”或历史+投影双重渲染）
+  useEffect(() => {
+    if (projection.phase !== "completed" || sessionId === null) return;
+    let cancelled = false;
+    void (async () => {
+      await queryClient.invalidateQueries({ queryKey: ["messages", mode, sessionId] });
+      if (!cancelled) reset();
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projection.phase, sessionId]);
+
   // 无会话时自动选最近一个（URL 带 session 参数时优先）
   useEffect(() => {
     if (urlSession) {

@@ -193,7 +193,7 @@ export function createDemoClient() {
     },
     async createKey(name: string | null): Promise<CreatedKey> {
       await delay(80);
-      const secret = `agd_demo_${Math.random().toString(36).slice(2, 18)}`;
+      const secret = `agd_${Math.random().toString(36).slice(2, 22)}`;
       const key: ApiKeyInfo = {
         id: nextId("k"),
         key_prefix: secret.slice(0, 8),
@@ -290,12 +290,19 @@ export function createDemoClient() {
         await delay(60, signal);
         yield ev({ type: "run.completed", usage: { input_tokens: 42, output_tokens: 128 } });
         state.runs.set(runId, { ...run, status: "completed" });
-        // 演示客户端顺手把交换写进“历史”，续聊/刷新后仍可见
+        // 演示客户端顺手把完整交换写进“历史”（与真实后端一致：含工具调用记录），续聊/刷新后仍可见
         const msgs = state.messages.get(run.sessionId) ?? [];
         const base = msgs.length ? (msgs[msgs.length - 1]?.seq ?? 0) : 0;
+        const toolCallId = `t_${runId.slice(-4)}`;
         msgs.push(
           { id: nextId("m"), seq: base + 1, role: "user", content: run.input, tool_calls: null, tool_call_id: null, created_at: nowISO() },
-          { id: nextId("m"), seq: base + 2, role: "assistant", content: full, tool_calls: null, tool_call_id: null, created_at: nowISO() },
+          {
+            id: nextId("m"), seq: base + 2, role: "assistant", content: lead + toolName + " 工具来处理：",
+            tool_calls: [{ id: toolCallId, type: "function", function: { name: toolName, arguments: "{}" } }],
+            tool_call_id: null, created_at: nowISO(),
+          },
+          { id: nextId("m"), seq: base + 3, role: "tool", content: "(工具结果)", tool_calls: null, tool_call_id: toolCallId, created_at: nowISO() },
+          { id: nextId("m"), seq: base + 4, role: "assistant", content: full, tool_calls: null, tool_call_id: null, created_at: nowISO() },
         );
         state.messages.set(run.sessionId, msgs);
       } catch (err) {

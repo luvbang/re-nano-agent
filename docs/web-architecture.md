@@ -1,8 +1,10 @@
 # Web 控制台前端架构（M6，P1）
 
-> 状态：设计冻结待评审（2026-10-24，M1 完成后编写；实现排期在 M6 D1–D3，M5 末有砍单决策点）。
+> 状态：已实现（2026-10-24，提前于 M3 完成，按 §7 以离线演示模式开发与验证；M3 落地 `/v1` 后切真实端点，页面代码零改动）。
 > 定位：自托管单管理员的运维/演示控制台，**不是**对外产品的前端。平台能力的第一交付物始终是 HTTP/SSE API + SDK（`docs/api-contract.md`）。
 > 参考对象：nanobot WebUI（`nanobot/webui/`，Vite + React 18 + TS + Tailwind 3 + shadcn/ui）——同栈但砍掉其复杂度，对照表见 §2。
+>
+> 实现偏差登记：shadcn/ui 组件未引入 Radix 原语（无 nanobot 源码可拷），改为 `components/ui.tsx` 极简基元（Button/Card/Input/Badge/Spinner）；功能面与 §1 范围一致。
 
 ## 1. 范围
 

@@ -72,10 +72,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
 
 def _mount_web_console(app: FastAPI) -> None:
-    """构建产物存在则由后端同源服务（web-architecture §8）；无 dist 时静默跳过。"""
+    """构建产物存在则由后端同源服务（web-architecture §8）；无 dist 时静默跳过。
+
+    - 带 hash 的 assets/ 回 immutable 长缓存；index.html 与 SPA 路由不缓存
+    - /v1、运维端点之外的未知路径回 index.html（前端路由刷新不 404）
+    """
     dist = Path(__file__).resolve().parents[2] / "web" / "dist"
     if not (dist / "index.html").is_file():
         return
-    from fastapi.staticfiles import StaticFiles
 
-    app.mount("/", StaticFiles(directory=dist, html=True), name="web")
+    from fastapi.responses import FileResponse
+
+    from agentd.api.errors import AppError, ErrorCode
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_or_asset(full_path: str) -> FileResponse:
+        if full_path.startswith(("v1/", "v1", "healthz", "readyz", "metrics")):
+            # API 面的 404 必须走错误信封，不能吞成 index.html
+            raise AppError(ErrorCode.NOT_FOUND, f"unknown path: /{full_path}")
+        candidate = dist / full_path
+        if full_path and candidate.is_file():
+            cache = (
+                "public, max-age=31536000, immutable"
+                if full_path.startswith("assets/")
+                else "no-cache"
+            )
+            return FileResponse(candidate, headers={"Cache-Control": cache})
+        return FileResponse(dist / "index.html", headers={"Cache-Control": "no-cache"})
