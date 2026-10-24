@@ -4,6 +4,27 @@
 
 ## [Unreleased]
 
+## [v0.1.0-m5] - 2026-10-24
+
+M5：部署硬化 + 运维 + 可观测。
+
+### Added
+
+- 备份/恢复：`deploy/backup.sh`（SQLite backup API 在线一致快照 + workspace 打包 + SHA256SUMS + 保留轮转，`PYTHON_BIN` 可覆盖）、`deploy/restore.sh`（校验和强校验）；恢复演练自动化测试
+- 请求边界：BodySizeLimitMiddleware（纯 ASGI；Content-Length 超限直接 413，分块预读缓冲后转发；`AGENTD_MAX_REQUEST_BODY_BYTES` 默认 1MB）；Caddy `request_body 2MB` 外层粗筛
+- CORS 白名单：`AGENTD_CORS_ORIGINS`（空=同源不加头；CORSMiddleware 最外层先于鉴权应答预检）
+- 指标：`api/metrics.py`（进程内 counters/gauge/直方图，零依赖 Prometheus 文本）+ HTTP 请求/延迟、run 终态/时长、SSE 订阅数、DB 体量埋点；裸 `GET /metrics`（管理员，抓取端配 Bearer）
+- 告警：`scripts/health_watch.py`（轮询 /healthz，连续失败→日志+可选 webhook，--once 供 cron）
+- 运维文档：`docs/ops.md`（健康/指标/告警/备份/升级回滚/日志）；`docs/security-checklist.md`（已验证 vs 待线上分离签收）
+
+### DoD 证据
+
+- docker stop 实拍优雅退出；恢复演练/轮转/413/CORS/metrics 自动化测试全绿；pip-audit 0 已知漏洞
+
+### Known issues
+
+- TLS 评级/备份 cron/异地副本/trivy 待 VPS 人工执行（human-checklist）；指标重启清零（单实例可接受）
+
 ## [v0.1.0-m4] - 2026-10-24
 
 M4：SDK + 计量 + 审计 + 压缩（真正可交付）。

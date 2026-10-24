@@ -68,6 +68,14 @@ curl https://<你的域名>/healthz           # DoD：返回 {"status":"ok",...}
 - 当天根据卡点修文档或代码，把耗时写回 devlog
 - 30 分钟内完成即达成 Go/No-Go 指标；超时也照实记录
 
+## 4.7 M5 线上硬化项（VPS 就绪后，~40 分钟）
+
+- 部署机上 `chmod 600 .env`
+- `crontab -e` 加每日备份（命令见 docs/ops.md §备份）+ health_watch 定时（§告警）
+- https://www.ssllabs.com/ssltest/ 跑 TLS 评级（目标 A）
+- 防火墙只放行 80/443/SSH：`ufw allow 80,443/tcp && ufw enable`
+- （可选）`docker run --rm -i aquasec/trivy image agentd:m5` 镜像扫描
+
 ## 完成后
 
 把各项结果（成功/失败/实际耗时）记进 `devlog.md` 对应日期条目；M2 起按 `docs/milestones.md` 继续。

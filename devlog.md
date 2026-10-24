@@ -185,3 +185,33 @@
 - SDK 未发 PyPI（quickstart 用 git subdirectory 安装）
 - 审计的 actor 粒度粗（"api"/"admin"/"run:<id>"，无终端用户身份——M3 契约本就只有 external_user_id）
 - 压缩摘要无异步预热（触发时同步等待一轮 LLM）
+
+---
+
+## 2026-10-24（M5 D1–D5 合并执行）
+
+**完成**
+- D1 硬化复核：HEALTHCHECK/非 root/246MB 均 M0 已备；docker stop 实拍优雅退出（Waiting→app.stopped→干净重启 healthy）
+- D2 备份：deploy/backup.sh（SQLite backup API 在线快照 + workspace tar + SHA256SUMS + KEEP 轮转，PYTHON_BIN 可覆盖）、restore.sh（校验和强校验）；tar 一律 cd 后相对文件名（Windows 盘符会被 GNU tar 当 host:file）
+- D3 边界：BodySizeLimitMiddleware（Content-Length 直接 413；分块预读缓冲——截断异常会被框架吞成 400）、AGENTD_CORS_ORIGINS 白名单（CORSMiddleware 最外层）、Caddy request_body 2MB 粗筛
+- D4 可观测：api/metrics.py（零依赖 Prometheus 文本）+ 埋点（HTTP 请求/延迟、run 终态/时长、SSE 订阅 gauge、DB 体量）+ 裸 /metrics（管理员）+ scripts/health_watch.py + docs/ops.md
+- D5 安全复查：pip-audit 0 漏洞；docs/security-checklist.md（已验证 vs 待线上分离）
+
+**证据**
+- 186 测试全绿（新增 backup 3 + body/CORS 5 + metrics 2）；mypy 85 files
+- 恢复演练自动化：备份→毁数据→恢复后消息/workspace 完好；轮转 KEEP=2 生效
+- /metrics：流量后 runs_total{completed}/duration 直方图/db_size 齐全
+- 跨平台脚本测试要点：subprocess env 在 WSL bash 下不透传——显式挑 git-bash + bash -c 内联变量
+
+**明日 3 件（M6 D1）**
+1. 控制台骨架：登录 + Sessions + Playground（docs/web-architecture.md 已冻结）
+2. Keys/Usage/Status 页
+3. 打磨与构建产物进镜像（或按 P1 降级砍单——M5 末评审：进度未延期，保留）
+
+**阻塞（人工项）**
+- TLS 评级 / .env 0600 / 备份 cron / 异地副本 / trivy —— 全部待 VPS（security-checklist「待线上」段）
+- 真人接入验证（M4 遗留）
+
+**技术债（只登记不修）**
+- 指标进程内存态（重启清零）；告警为脚本级（无 Prometheus AlertManager 集成）
+- body-limit 中间件对无 Content-Length 请求采用预读缓冲（v0.1 请求皆小 JSON，可接受）
