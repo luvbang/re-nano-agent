@@ -28,7 +28,7 @@ from agentd.storage.repositories import RunRepository
 logger = logging.getLogger(__name__)
 
 
-def _build_run_manager(
+async def _build_run_manager(
     settings: Settings,
     db: Database,
     provider: Provider | None,
@@ -41,6 +41,7 @@ def _build_run_manager(
     from agentd.runtime.context import ContextBuilder
     from agentd.tools.builtin import BUILTIN_TOOLS
     from agentd.tools.filesystem import filesystem_tools
+    from agentd.tools.mcp import parse_mcp_config
     from agentd.tools.registry import ToolRegistry
 
     if provider is None:
@@ -68,6 +69,12 @@ def _build_run_manager(
         .register_all(BUILTIN_TOOLS)
         .register_all(filesystem_tools(settings.workspace_root))
     )
+    mcp_config = parse_mcp_config(settings.mcp_servers)
+    if mcp_config:
+        from agentd.tools.mcp import load_mcp_tools
+
+        for tool in await load_mcp_tools(mcp_config):
+            tools.register(tool)  # 同名冲突时让位给内置（register 抛错则跳过）
     from agentd.runtime.compaction import HistoryCompactor
     from agentd.services.usage_service import UsageService, parse_price_table
 
@@ -110,7 +117,7 @@ def create_app(settings: Settings | None = None, *, provider: Provider | None = 
         recovered = await RunRepository(db).recover_interrupted()
         if recovered:
             logger.warning("runs.interrupted", extra={"count": recovered})
-        app.state.run_manager = _build_run_manager(
+        app.state.run_manager = await _build_run_manager(
             settings, db, provider, metrics=app.state.metrics
         )
         from agentd.security.ratelimit import RateLimiter

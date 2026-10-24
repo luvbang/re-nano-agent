@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### Added（v0.2 进行中）
+
+- **MCP 工具支持**：`AGENTD_MCP_SERVERS`（JSON）挂接任意 MCP 服务器的工具——Streamable HTTP 握手（initialize/会话头/notifications）、`tools/list` 发现、`tools/call` 桥接（isError 映射工具错误）；单服务器故障跳过不影响启动；走统一工具管线（超时/审计/截断）。`docs/mcp.md`
+- `agentd purge --project <id> [--yes]`：go-live 数据保留项——级联删除 project 数据、审计脱钩保留、无 --yes 只打印计划
+- OpenAPI 契约快照守护（`tests/fixtures/openapi.json`，变更须显式 --regen）
+
 ## [v0.1.0-rc2] - 2026-10-24
 
 M7：内测稳定性（机器可执行部分）。

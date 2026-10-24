@@ -63,6 +63,8 @@ class Settings(BaseSettings):
     admin_api_key: SecretStr = SecretStr("")  # env 管理员 key（引导用；DB admin scope 亦可）
     # 价格表（M4）：JSON {"模型": {"input": $/1M, "output": $/1M}}；空=不记成本
     llm_price_table: str = ""
+    # MCP 服务器（v0.2）：JSON {"名字": {"url": "...", "token": "可选"}}
+    mcp_servers: str = ""
     run_global_concurrency: int = Field(default=8, ge=1)
     run_project_concurrency: int = Field(default=4, ge=1)
     ratelimit_global_per_min: int = Field(default=240, ge=1)

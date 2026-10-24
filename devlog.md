@@ -263,3 +263,18 @@
 2. M5 线上硬化（.env 0600/备份 cron/TLS 评级/防火墙/trivy）
 3. 真人接入验证（计时+卡点）与内测邀请 2–3 团队
 4. 线上 5 天稳定运行数据回填 stability-report → 全绿后按 go-live-checklist 打 v0.1.0
+
+---
+
+## 2026-10-24（v0.2 D1 + v0.1 欠账清理）
+
+**完成**
+- v0.1 欠账：`agentd purge`（数据保留 go-live 项；CLI asyncio.run 在测试事件循环里要经 to_thread）、OpenAPI 契约快照守护（1977 行；--regen 重生成）
+- v0.2 D1 MCP：tools/mcp.py（McpEndpoint Streamable HTTP 客户端：JSON/SSE 双格式、会话头、懒握手；McpTool 桥接；load_mcp_tools 容错装配）+ AGENTD_MCP_SERVERS 配置 + main 装配（builder 转 async）+ docs/mcp.md
+- 教训：MCP initialize 的 result 允许为空对象（勿做兼容性判空误报）；CLI 子命令的 asyncio.run 与 pytest-asyncio 循环冲突
+
+**证据**
+- 202 测试全绿（+purge 3 +快照 1 +mcp 5）；mypy 91 files
+
+**下一步（v0.2 候选，按 retro 优先级）**
+- 多 provider（Anthropic 原生/Responses）+ 失败自动切换 + SSRF pinned transport
