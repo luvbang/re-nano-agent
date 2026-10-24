@@ -172,4 +172,20 @@ def create_app(settings: Settings | None = None, *, provider: Provider | None = 
     app.include_router(sessions_router, dependencies=throttled)
     app.include_router(runs_router, dependencies=throttled)
     app.include_router(platform_router)
+    _mount_console(app, settings)
     return app
+
+
+def _mount_console(app: FastAPI, settings: Settings) -> None:
+    """web/dist 存在则由本服务同源托管（API 路由已先注册，不会被遮蔽）。"""
+    from pathlib import Path
+
+    from fastapi.staticfiles import StaticFiles
+
+    candidates = [settings.static_dir, Path.cwd() / "web" / "dist"]
+    for candidate in candidates:
+        if candidate and (candidate / "index.html").exists():
+            app.mount("/", StaticFiles(directory=str(candidate), html=True), name="console")
+            logger.info("console.mounted", extra={"path": str(candidate)})
+            return
+    logger.info("console.not_built")

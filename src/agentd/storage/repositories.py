@@ -104,7 +104,9 @@ class SessionRepository(Repository):
         self, project_id: str, *, limit: int = 50
     ) -> list[dict[str, Any]]:
         return await self.db.fetch_all(
-            "SELECT * FROM sessions WHERE project_id = ? ORDER BY created_at DESC LIMIT ?",
+            # rowid 决胜：同一毫秒创建的会话按插入顺序稳定倒序
+            "SELECT * FROM sessions WHERE project_id = ? ORDER BY created_at DESC, rowid DESC"
+            " LIMIT ?",
             (project_id, limit),
         )
 

@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     # CORS 白名单（M5 D3）：逗号分隔；空 = 同源模式（不加 CORS 头）
     cors_origins: str = ""
     max_request_body_bytes: int = Field(default=1_000_000, ge=1_000)
+    # 控制台静态资源目录（M6）：默认探测 <cwd>/web/dist；容器里用 env 指定
+    static_dir: Path | None = None
 
     @model_validator(mode="after")
     def _resolve_paths(self) -> Settings:

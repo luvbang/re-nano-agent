@@ -52,6 +52,20 @@ async def create_session(body: SessionCreate, auth: ProjectAuth, db: DbDep) -> S
 
 
 @router.get(
+    "",
+    response_model=list[SessionOut],
+    summary="会话列表（按创建时间倒序）",
+)
+async def list_sessions(
+    auth: ProjectAuth,
+    db: DbDep,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> list[SessionOut]:
+    rows = await SessionRepository(db).list_by_project(str(auth.project["id"]), limit=limit)
+    return [_session_out(row) for row in rows]
+
+
+@router.get(
     "/{session_id}",
     response_model=SessionOut,
     summary="会话详情",
