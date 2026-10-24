@@ -4,6 +4,31 @@
 
 ## [Unreleased]
 
+## [v0.1.0-m1] - 2026-10-24
+
+M1：Provider + Runner + 流式（核心闭环）。
+
+### Added
+
+- Provider 抽象（`providers/base.py`）：ChatMessage/ToolDefinition wire 类型、流式事件（TextDelta/ReasoningDelta/ToolCallCompleted/StreamEnd/Usage）、错误归一化（RateLimited/ServerError/Timeout/Protocol/Rejected，retryable + retry_after）
+- `openai_compat.py`：httpx 流式 SSE 解析（不引 OpenAI SDK）、tool_calls 分片累积、`stream_options.include_usage` 采集；断流判定 = 无 [DONE] 且无 finish_reason 即报错
+- `fake.py`：脚本化 FakeChatProvider + demo_turn（CLI 离线演示脚本）
+- `retry.py`：RetryingProvider —— 仅未产出事件时重试、Retry-After 优先、指数退避封顶、sleep 可注入
+- 工具层（`tools/`）：Tool 协议 + 注册表（存在性检查/JSON 解析/wait_for 超时/异常转错误结果/16k 截断）+ 内置 echo、get_time
+- Runner（`runtime/runner.py`）：system+history+user 组装、≤8 次模型调用、工具调用回路（assistant.tool_calls + tool 结果回填）、usage 跨轮累计、契约错误码映射、run 级超时、显式 aclose 链（取消无悬挂）
+- 事件类型（`runtime/events.py`）：对齐 api-contract §3 的 8 种事件
+- token 估算（`runtime/tokens.py`）：tiktoken 惰性加载，离线降级 len/4
+- CLI：`agentd chat --session demo [--fake] [--model]`，多轮流式对话 + 工具事件；失败轮不写回历史
+- CI：pytest 接入 `--cov`（分支覆盖 91%）；依赖新增 tiktoken、pytest-cov
+
+### DoD 证据
+
+- CLI `--fake` 十轮对话 + 工具闭环实跑通过；73 测试全绿（respx fixture 覆盖文本流/工具流/429/5xx/401/超时/断流/畸形 JSON；取消后无悬挂 task）
+
+### Known issues
+
+- 会话历史仅在 CLI 进程内存（M2 落库）；SSE 端点/取消 API 属 M3
+
 ## [v0.1.0-m0] - 2026-10-23
 
 M0：范围冻结 + 工程骨架 + 部署链。

@@ -61,3 +61,34 @@
 - 日志脱敏（key/token/password 模式）未实现 → M4 D3
 - 未做 OpenAPI/SSE schema 快照测试 → M3 契约层补
 - `docs/api-contract.md` 的 `/v1/*` 端点仅文档，代码尚未落地（M1–M4）
+
+---
+
+## 2026-10-24（M1 D1–D5 合并执行）
+
+**完成**
+- D1 Provider：`providers/base.py`（协议/事件/错误归一化）+ `openai_compat.py`（httpx 手写 SSE、tool_calls 按 index 累积、usage、断流判定）+ `fake.py`（脚本化回放）
+- D2 工具与 Runner：`tools/`（Tool 协议、注册表：存在性/JSON 解析/wait_for 超时/异常兜底/16k 截断、echo/get_time）+ `runtime/runner.py`（system+history+user、≤8 迭代、工具回路 wire 消息、usage 跨轮累计）
+- D3 生命周期：`runtime/events.py`（契约事件类型）、`providers/retry.py`（未产出事件才重试、Retry-After 优先、指数退避封顶）、`runtime/tokens.py`（tiktoken 惰性加载 + 离线 fallback）、Settings 增 `llm_*/run_*`
+- D4 CLI：`agentd chat --session demo [--fake]`（流式输出/工具事件/usage；失败轮不写回历史）；CI pytest 接入 --cov
+- D5 闭环演示：`--fake` 下 模型→get_time/echo→模型→回答 全链路
+
+**证据**
+- `ruff check .` / `mypy`（44 files）/ `pytest` 73 passed；分支覆盖率 91%（TOTAL）
+- CLI 实跑（`chat --fake`）：`[tool] get_time ok` → `工具 call_demo_1 的结果是：utc=2026-10-24T10:27:04Z ...`；usage 两轮累计 in=14
+- 取消语义：aclose 与 Task.cancel 后 `provider.open_streams == 0`、无 pending task
+- 退避可测：sleep spy 断言 [0.5, 1.0]，Retry-After 覆盖退避，封顶 2.5
+
+**明日 3 件（M2 D1）**
+1. schema v2 落地会话历史读写（messages repo）+ run 状态机接线
+2. ContextBuilder：token 预算、超限裁剪旧工具结果、工具结果落盘
+3. 文件工具 + workspace path resolver（路径穿越/软链测试先行）
+
+**阻塞**
+- 无 VPS/域名 → 线上部署验收与「新机 30 分钟」耗时仍欠（清单见 docs/human-checklist.md）
+- 无真实 LLM key → openai_compat 仅 respx fixture 验证，真模型连通透传待人工
+
+**技术债（只登记不修）**
+- SSE 心跳/seq 编号属 M3 API 层；runner 事件目前无 seq
+- 工具 JSON Schema 校验（additionalProperties）未做 → M2 随真工具补
+- `Database` 读串行化、日志脱敏等 M0 遗留项不变
