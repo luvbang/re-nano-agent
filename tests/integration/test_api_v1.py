@@ -165,12 +165,15 @@ async def test_full_flow_text_run(client: AsyncClient) -> None:
     events = await collect_sse(client, run_id)
     types = [e["type"] for e in events]
     assert types[0] == "run.started"
-    assert "message.delta" in types
     assert types[-1] == "run.completed"
+    # 契约 §3 已知限制：delta 不落库，晚于终态连接时收不到增量（以 completed 全文为准）
+    if "message.delta" in types:
+        delta_before_completed = types.index("message.delta") < types.index("message.completed")
+        assert delta_before_completed
     # seq 单调递增
     seqs = [e["seq"] for e in events]
     assert seqs == sorted(seqs) and len(set(seqs)) == len(seqs)
-    # completed 全文
+    # completed 全文（回放保证）
     completed = next(e for e in events if e["type"] == "message.completed")
     assert completed["content"] == "(fake)你说的是：你好"
 

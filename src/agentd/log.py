@@ -29,12 +29,13 @@ _RESERVED = frozenset(
 
 
 _REDACTION_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    # Bearer token（Authorization 头）
+    (re.compile(r"(?i)\b(bearer)\s+\S+"), r"\1 ***"),
+    # JSON 字段里的密钥类值（含转义引号的嵌套 JSON）
+    (re.compile(r'((?:\\?")(?:api_key|token|password|secret)(?:\\?")\s*:\s*(?:\\?"))[^"\\]*(?:\\?")'),
+     r"\1***"),
     # agd_ 开头的 API key 明文（保留前缀便于对账）
     (re.compile(r"agd_[A-Za-z0-9]{6,}"), "agd_***"),
-    # Authorization 头 / Bearer token
-    (re.compile(r"(?i)(bearer\s+)\S+"), r"\1***"),
-    # JSON 字段里的密钥类值
-    (re.compile(r'("(?:api_key|token|password|secret)"\s*:\s*")[^"]*(")'), r"\1***\2"),
 )
 
 

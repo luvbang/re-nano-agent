@@ -77,7 +77,7 @@ class InternalServerError(AgentdError):
     """500：未预期异常。"""
 
 
-class ConnectionError(AgentdError):  # noqa: A001 — 与内置同名是有意的（网络层语义）
+class ConnectionError(AgentdError):
     """网络层失败（连不上 / 断流）；retryable。"""
 
     def __init__(self, message: str = "无法连接 agentd 服务") -> None:

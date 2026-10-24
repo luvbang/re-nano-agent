@@ -141,7 +141,8 @@ class ConversationService:
         kept = trim_to_budget(active, budget_tokens=self.token_budget)
         dropped = active[: len(active) - len(kept)]
         if not dropped or summarizer is None:
-            return kept
+            # 没有可压缩内容时必须保留 summary 头，否则丢历史
+            return head + kept if not dropped else kept
         transcript = _transcript_text(prev_summary, dropped)
         try:
             summary_text = await summarizer(transcript)
@@ -156,7 +157,7 @@ class ConversationService:
             content=summary_text,
             meta={"covers_messages": len(dropped)},
         )
-        return [_summary_message(row)] + kept
+        return [_summary_message(row), *kept]
 
     async def persist_exchange(self, session_id: str, exchange: list[ChatMessage]) -> None:
         for msg in exchange:

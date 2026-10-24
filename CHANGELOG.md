@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### Added（M4：Python SDK + 计量审计 + 压缩 + 日志脱敏）
+
+- Python SDK（`agentd.sdk`，顶层 `from agentd import Client`）：同步 + 异步双 API、SSE 流式（`client.runs.stream` / `stream_async`，事件 dataclass 带 `type` 字段，契约 §5 示例代码原样可跑）、错误类型对应契约错误码（`AuthenticationError`/`RateLimitError`(带 retry_after_s)/`ConflictError`/…）、自动重试仅对 retryable（429/502/504/网络错误，指数退避 + Retry-After 优先）、`Idempotency-Key` 透传
+- 审计：`AuditRepository` + 关键操作落库（session.created / run.created / run.cancelled / key.created / key.revoked，含 actor key 与 IP）+ 工具调用审计（`tool_calls` 表一行一次调用）+ `GET /v1/admin/audit` 查询
+- 摘要压缩：`load_history(summarizer=…)` —— 活历史超预算时把被丢弃轮次（连同上一份摘要）压成 role=summary 消息落库，上下文 = [摘要] + 保留轮；summarizer 由当前 provider 扮演；压缩失败退化为整轮丢弃（不失败 run）
+- 日志脱敏：`log.redact()` —— JSON 输出层擦除 `agd_*` key、`Bearer` token、`api_key/token/password/secret` 字段值（含嵌套转义 JSON）
+- `examples/quickstart.py` / `examples/async_stream.py`：契约冻结用法的一分钟上手示例（实跑验证）
+
 ### Added（M3：平台 API + 鉴权 + 并发）
 
 - 鉴权：`api/auth.py`（Bearer → sha256 → key 行；撤销立即生效；scope 区分 core/admin）、`services/keys.py`（`agd_` key 生成、`AGENTD_ADMIN_API_KEY` 启动引导 admin scope key + default 项目）
@@ -38,9 +46,9 @@
 
 ### DoD 证据
 
-- 后端：`ruff` / `mypy`（62 files）/ `pytest` **131 passed**（新增 12 个 /v1 集成测试：鉴权 401/403/撤销、全流程含工具回路、SSE 回放与 Last-Event-ID、取消、并发 409、幂等、限流 429、跨项目 404、重启恢复、models）
-- 真实链路浏览器联调：`AGENTD_ADMIN_API_KEY` + fake provider 起服 → 控制台登录真实 key → Playground 发消息 → 真实 SSE 流式 + 真实 get_time 工具卡（返回服务器当前时间）→ Usage 图表渲染当日真实 run
-- M2 回归：路径穿越/软链逃逸/SSRF 全保留段/重启续聊等安全测试全绿
+- 后端：`ruff` / `mypy`（68 files）/ `pytest` **141 passed**（M4 新增 9 个：SDK 同步全流程（真 uvicorn 随机端口）/错误类型/异步流式、审计链、tool_calls 落库、摘要压缩往返、无 summarizer 退化、脱敏两例、SSE 解析前向兼容）
+- examples 实跑：`quickstart.py`（会话→流式+工具卡→usage→keys 全链路）与 `async_stream.py` 对真实服务跑通
+- M3 回归：12 个 /v1 集成测试绿（晚连接收不到 delta 为契约已知限制，测试对齐）
 - 前端（M6 前置，见下）：`vitest` 14 passed；`tsc --noEmit && vite build` 通过，bundle gzip 194.63KB（< 250KB 预算）；演示模式六页面浏览器实测通过
 - `agentd serve` 实测：`/`、`/playground`、`/keys` 200（SPA 回退）；`/v1/nope` 错误信封；assets `cache-control: immutable`、index `no-cache`
 
