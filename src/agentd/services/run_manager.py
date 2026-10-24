@@ -17,6 +17,7 @@ from typing import Any
 
 from agentd.api.errors import AppError, ErrorCode
 from agentd.providers.base import Provider
+from agentd.runtime.compaction import HistoryCompactor
 from agentd.runtime.events import (
     MessageCompleted,
     MessageDelta,
@@ -118,6 +119,7 @@ class RunManager:
         global_concurrency: int = 8,
         project_concurrency: int = 4,
         usage_service: UsageService | None = None,
+        compactor: HistoryCompactor | None = None,
     ) -> None:
         self.db = db
         self.provider = provider
@@ -125,7 +127,7 @@ class RunManager:
         self.model = model
         self.project_concurrency = project_concurrency
         self.runner_kwargs = runner_kwargs or {}
-        self.service = ChatService(db, usage_service=usage_service)
+        self.service = ChatService(db, usage_service=usage_service, compactor=compactor)
         self.audit = AuditRepository(db)
         self.events = RunEventRepository(db)
         self.runs = RunRepository(db)

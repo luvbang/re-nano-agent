@@ -63,20 +63,23 @@ def _build_run_manager(
         .register_all(BUILTIN_TOOLS)
         .register_all(filesystem_tools(settings.workspace_root))
     )
+    from agentd.runtime.compaction import HistoryCompactor
     from agentd.services.usage_service import UsageService, parse_price_table
 
+    context_builder = ContextBuilder(
+        context_window=settings.llm_context_window, max_output=settings.llm_max_output
+    )
     return RunManager(
         db,
         provider,
         tools=tools,
         model=model,
         usage_service=UsageService(db, parse_price_table(settings.llm_price_table)),
+        compactor=HistoryCompactor(db, provider, context_builder=context_builder),
         runner_kwargs={
             "max_iterations": settings.run_max_iterations,
             "timeout_s": settings.run_timeout_s,
-            "context_builder": ContextBuilder(
-                context_window=settings.llm_context_window, max_output=settings.llm_max_output
-            ),
+            "context_builder": context_builder,
         },
         global_concurrency=settings.run_global_concurrency,
         project_concurrency=settings.run_project_concurrency,

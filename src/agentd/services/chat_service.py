@@ -17,6 +17,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from agentd.providers.base import ChatMessage, Provider
+from agentd.runtime.compaction import HistoryCompactor
 from agentd.runtime.events import RunCompleted, RunEvent, RunFailed, ToolCompleted, ToolStarted
 from agentd.runtime.runner import AgentRunner
 from agentd.services.usage_service import UsageService
@@ -33,9 +34,16 @@ from agentd.tools.registry import ToolRegistry
 
 
 class ChatService:
-    def __init__(self, db: Database, *, usage_service: UsageService | None = None) -> None:
+    def __init__(
+        self,
+        db: Database,
+        *,
+        usage_service: UsageService | None = None,
+        compactor: HistoryCompactor | None = None,
+    ) -> None:
         self.db = db
         self.usage_service = usage_service
+        self.compactor = compactor
         self.messages = MessageRepository(db)
         self.runs = RunRepository(db)
         self.sessions = SessionRepository(db)
@@ -113,7 +121,11 @@ class ChatService:
         failure: RunFailed | None = None
         pending_tools: dict[str, dict[str, Any]] = {}
 
-        async for event in runner.run(await self.load_history(session_id), user_input):
+        if self.compactor is not None:
+            history = await self.compactor.compact(session_id)
+        else:
+            history = await self.load_history(session_id)
+        async for event in runner.run(history, user_input):
             if isinstance(event, ToolStarted):
                 pending_tools[event.tool_call_id] = {
                     "name": event.name,

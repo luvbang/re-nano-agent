@@ -142,6 +142,7 @@ class MessageRepository(Repository):
         text: str | None = None,
         tool_calls: list[ToolCallWire] | None = None,
         tool_call_id: str | None = None,
+        meta: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         assert role in ("user", "assistant", "tool", "summary"), f"role {role} 不落库"
         # seq 分配与写入都在 Database 单锁内完成（fetch + execute 各持锁一次，
@@ -154,7 +155,7 @@ class MessageRepository(Repository):
         message_id = new_id("m")
         await self.db.execute(
             "INSERT INTO messages (id, session_id, seq, role, content_json, tool_calls_json,"
-            " tool_call_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            " tool_call_id, meta_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 message_id,
                 session_id,
@@ -163,6 +164,7 @@ class MessageRepository(Repository):
                 json.dumps({"text": text}) if text is not None else None,
                 json.dumps(tool_calls) if tool_calls else None,
                 tool_call_id,
+                json.dumps(meta) if meta else "{}",
             ),
         )
         result = await self.get(message_id)
