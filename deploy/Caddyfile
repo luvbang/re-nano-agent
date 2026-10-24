@@ -11,6 +11,11 @@
 {$AGENTD_DOMAIN:localhost} {
 	encode zstd gzip
 
+	# 请求体上限（M5 D3）：应用层另有精确限制，这里是外层粗筛
+	request_body {
+		max_size 2MB
+	}
+
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options "nosniff"

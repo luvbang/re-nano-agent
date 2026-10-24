@@ -131,7 +131,23 @@ def create_app(settings: Settings | None = None, *, provider: Provider | None = 
     app.state.db = db
     app.state.started_at = time.monotonic()
 
+    from agentd.api.body_limit import BodySizeLimitMiddleware
+
     app.add_middleware(RequestIDMiddleware, header_name=settings.request_id_header)
+    app.add_middleware(
+        BodySizeLimitMiddleware, max_bytes=settings.max_request_body_bytes
+    )
+    if settings.cors_origins.strip():
+        from fastapi.middleware.cors import CORSMiddleware
+
+        origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_methods=["GET", "POST", "OPTIONS"],
+            allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "Last-Event-ID"],
+            max_age=600,
+        )
     register_error_handlers(app)
     app.include_router(health_router)
     from fastapi import Depends

@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     run_global_concurrency: int = Field(default=8, ge=1)
     run_project_concurrency: int = Field(default=4, ge=1)
     ratelimit_global_per_min: int = Field(default=240, ge=1)
+    # CORS 白名单（M5 D3）：逗号分隔；空 = 同源模式（不加 CORS 头）
+    cors_origins: str = ""
+    max_request_body_bytes: int = Field(default=1_000_000, ge=1_000)
 
     @model_validator(mode="after")
     def _resolve_paths(self) -> Settings:
