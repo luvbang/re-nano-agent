@@ -190,6 +190,8 @@ async def test_tool_run_events_persisted(client: AsyncClient) -> None:
     tool_done = next(e for e in events if e["event"] == "tool.completed")
     assert tool_done["data"]["name"] == "get_time"
     assert tool_done["data"]["status"] == "ok"
+    # v0.2-4：事件携带工具输出预览（控制台文件预览数据源）
+    assert tool_done["data"]["result"]
 
 
 async def test_messages_expose_tool_calls_wire(client: AsyncClient) -> None:

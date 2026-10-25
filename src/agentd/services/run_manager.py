@@ -62,6 +62,17 @@ _PERSISTED_TYPES = {
 }
 
 
+#: tool.completed 结果预览的线上封顶：工具管线已截到 16k，事件线上再裁到 2k；
+#: 持久化回放走同一序列化，重连/直连看到的预览一致
+_TOOL_RESULT_PREVIEW_CAP = 2000
+
+
+def _clip_result(result: str) -> str:
+    if len(result) <= _TOOL_RESULT_PREVIEW_CAP:
+        return result
+    return result[:_TOOL_RESULT_PREVIEW_CAP] + f"…（已截断，共 {len(result)} 字符）"
+
+
 def serialize_event(event: RunEvent) -> tuple[str, dict[str, Any]]:
     """RunEvent → (契约事件名, payload dict)。"""
     name = _EVENT_NAMES[type(event)]
@@ -77,6 +88,7 @@ def serialize_event(event: RunEvent) -> tuple[str, dict[str, Any]]:
             "name": event.name,
             "status": event.status,
             "duration_ms": event.duration_ms,
+            "result": _clip_result(event.result),
         }
     elif isinstance(event, MessageCompleted):
         payload = {

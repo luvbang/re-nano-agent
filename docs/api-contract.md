@@ -71,7 +71,7 @@ event: run.started        data: {"seq":1,"run_id":"r_...","session_id":"s_..."}
 event: message.delta      data: {"seq":2,"delta":"你"}
 event: reasoning.delta    data: {"seq":3,"delta":"..."}          # 若模型支持
 event: tool.started       data: {"seq":4,"tool_call_id":"t_1","name":"read_file","args":{...}}
-event: tool.completed     data: {"seq":5,"tool_call_id":"t_1","status":"ok","duration_ms":12}
+event: tool.completed     data: {"seq":5,"tool_call_id":"t_1","status":"ok","duration_ms":12,"result":"..."}  # v0.2-4 增补 result：工具输出预览（≤2000 字符，超长截断标注）
 event: message.completed  data: {"seq":6,"content":"完整回答","usage":{"input_tokens":...}}
 event: run.completed      data: {"seq":7,"run_id":"r_...","usage":{...}}
 event: run.failed         data: {"seq":8,"error":{"code":"model_error","message":"...","retryable":true}}

@@ -125,6 +125,7 @@ async def test_tool_loop_roundtrip_and_message_wire() -> None:
     assert isinstance(done, ToolCompleted)
     assert done.status == "ok"
     assert done.duration_ms >= 0
+    assert done.result == "hi"  # v0.2-4：事件携带工具输出预览
 
     # 第二次模型调用看到的 wire 消息：assistant(tool_calls) + tool 结果
     second_call = provider.calls[1]
