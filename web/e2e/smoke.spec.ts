@@ -24,9 +24,23 @@ test("登录页可进离线演示模式", async ({ page }) => {
   await expect(page.getByText("当前为离线演示模式")).toBeVisible();
 });
 
-test("Playground 全链路：发送 → 工具卡（结果预览）→ 完成", async ({ page }) => {
+test("Playground 全链路：Key 门控 → 绑定项目 Key → 发送 → 工具卡（结果预览）→ 完成", async ({ page }) => {
   await gotoDemo(page);
-  // 新会话就绪后输入框可用（demo 客户端 ~100ms 建会话）
+
+  // v0.2-4 门控：未绑定项目 Key 时对话页显示引导（而非 composer）
+  await expect(page.getByText("对话功能需要项目 Key")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "去 Keys 页绑定 →" }).click();
+  await expect(page).toHaveURL(/keys/);
+
+  // 建一个项目 Key 并绑定到 Playground（明文只显示一次的对话框）
+  await page.getByRole("combobox").selectOption({ label: "默认项目" });
+  await page.getByRole("button", { name: "创建 Key", exact: true }).click();
+  await expect(page.getByText("Key 已创建")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "在 Playground 使用" }).click();
+  await expect(page.getByText("已绑定到 Playground").first()).toBeVisible();
+
+  // 回 Playground：composer 可用，发消息
+  await page.goto("/playground");
   const box = page.getByPlaceholder("输入消息，回车发送（Shift+Enter 换行）");
   await expect(box).toBeEnabled({ timeout: 10_000 });
   await box.fill("现在几点了");

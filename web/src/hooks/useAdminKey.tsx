@@ -87,16 +87,20 @@ export function AdminKeyProvider({ children }: { children: ReactNode }) {
     [mode, apiKey],
   );
 
-  // 项目 key 仅在真实模式下生效；被撤销（401/403）时自动解绑
+  // 项目 key：真实模式走独立 client（401/403 自动解绑）；demo 模式绑定后用演示
+  // 数据源跑对话（否则 demo 下 playgroundClient 恒 null，对话页会被门控静默禁用）
   const playgroundClient = useMemo(() => {
-    if (mode !== "real" || !playgroundKey) return null;
-    return createApiClient("real", {
-      apiKey: playgroundKey,
-      onUnauthorized: () => {
-        sessionStorage.removeItem(PLAYGROUND_KEY_STORAGE);
-        setPlaygroundKeyState("");
-      },
-    });
+    if (!playgroundKey) return null;
+    if (mode === "real") {
+      return createApiClient("real", {
+        apiKey: playgroundKey,
+        onUnauthorized: () => {
+          sessionStorage.removeItem(PLAYGROUND_KEY_STORAGE);
+          setPlaygroundKeyState("");
+        },
+      });
+    }
+    return createApiClient("demo", { apiKey: playgroundKey });
   }, [mode, playgroundKey]);
 
   const value = useMemo(

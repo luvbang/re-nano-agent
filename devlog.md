@@ -390,6 +390,9 @@
   CI 新增 smoke job（build → chromium → playwright test）
 - 修并行线遗留 typecheck 红线：补 `ApiClient` 接口 renameSession/deleteSession
   定义、Layout 未用变量（main 恢复绿）
+- 修项目 Key 门控的 demo 模式回归：`playgroundClient` 在 demo 模式绑定后回落演示
+  数据源（此前恒 null，对话页 submit 被静默吞掉、绑定引导恒显）；e2e 冒烟随之升级为
+  「门控 → Keys 建 Key 绑定 → 对话全链路」真实路径
 
 **证据**
 - ruff / mypy（105 files）/ pytest **全绿**（新增 3 序列化单测 + 集成 result 断言）
