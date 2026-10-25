@@ -278,3 +278,29 @@
 
 **下一步（v0.2 候选，按 retro 优先级）**
 - 多 provider（Anthropic 原生/Responses）+ 失败自动切换 + SSRF pinned transport
+
+---
+
+## 2026-10-25（两线合流：zh 控制台整体替换 + 契约适配 + P0 修复）
+
+> 背景：仓库自 622e41a 起存在两条并行实现线（远程 main 走完 M2→M8→v0.2；本地 zh 独立实现 M2/M3/M4/M6）。
+> 经分析决定：以 main 为后端基线，用 zh 线的 web/ 控制台整体替换 main 的极简控制台。分析报告见 docs/report-2026-10-25.md。
+
+**完成**
+- 合流分支 feat/console-v2（基线 58a96eb）：web/ 全量替换为 zh 线实现（六页面、离线演示模式、SSE Last-Event-ID 重连/心跳看门狗/退避、run 投影纯函数 + vitest）
+- 契约适配（zh 控制台 → main 后端）：messages 返回 MessagePage{items,has_more} 且参数为 before_seq（客户端展开为有序数组）；usage 参数 date_from/date_to、聚合字段 bucket + cost_usd；admin keys 需 project_id、撤销改 POST /keys/{id}/revoke、响应 {key, detail}；新增 projects CRUD 与 /v1/admin/stats 消费；SSE 解析器兼容 seq 在 SSE id: 字段（main）与 data 内（旧）两种格式
+- 后端小改：GET /v1/sessions/{id}/messages 透出 tool_calls wire 列表（数据本就落库在 tool_calls_json，控制台据此重建历史工具卡）；OpenAPI 快照已 --regen
+- 修复测试环境缺陷：test_concurrency 的 20ms 轮询（≈1000 req/s）会打空全局兜底限流桶（默认 240/min），在慢机器（Windows）上必然 429 自我干扰；测试 key 提至 10000/min 且 Settings 调高 ratelimit_global_per_min，test_metrics 同理（metrics 在本机重负载下仍偶发时序敏感，CI 无碍）
+- P0 交互修复：中文输入法组合态回车误发送（isComposing）；取消后投影收敛为 cancelled 终态（光标停止、保留已生成部分、UI 提示条）；sticky-bottom 滚动（仅贴近底部时跟随，流式期间即时滚动，上翻出现"回到底部"）
+- 功能补强（自 main 控制台移植 + 增补）：创建 Key 一键绑定 Playground（项目 key 仅作用于 Playground，最小权限，自动解绑 on 401/403）；登录即时校验 admin key（401/403 直接拒绝）；Usage 汇总卡（runs/tokens/cost）+ 即改即查；Status 页消费 /v1/admin/stats 运行概况；消息组件 memo 化 + 稳定 key；错误栏带重试按钮（消费 retryable 字段）；撤销改两步内联确认（替代 window.confirm）；用量徽标在完成轮后留存至下次发送
+
+**证据**
+- 后端：ruff / mypy（91 files）/ pytest **190 passed, 3 skipped**（连跑两遍稳定；新增 messages tool_calls 断言）
+- 前端：tsc + vitest **16 passed**（新增 run.cancelled 投影、SSE seq-from-id 用例）+ vite build 通过，gzip 197.11KB（< 250KB 预算）
+- 压测（serve_fake + scripts/perf.py，本机 Windows）：20 并发 × 60 run **60/60 成功零失败**，TTFT P95=270.6ms（预算 3000ms → PASS）、完成延迟 P95=339.2ms、吞吐 18.9 rps（main 线 Linux 证据为 82 rps，本机 I/O 较慢属预期）
+- Mimosa 深度扫描已封印（scanId scan-2026-10-25T02-53-08…，3 findings 均为 main 既有误报/设计如此：PRAGMA int() 强转、demo 固定 key、运营者自配 webhook；测试假 key fixture 不在列）
+
+**技术债（只登记不修）**
+- assistant 回复仍是纯文本渲染（无 Markdown/代码高亮）——zh 线 P1 清单第一位，需引入 react-markdown 并同步做 recharts 路由级 code-split
+- zh 线后端实现（src/agentd 的平行 M2/M3/M4）随 zh 分支留档，不再维护；SDK 位置差异（zh: src/agentd/sdk vs main: sdk/）以 main 为准
+- 全局限流桶全局共享：多副本部署需换共享存储（v0.1 单实例不变）

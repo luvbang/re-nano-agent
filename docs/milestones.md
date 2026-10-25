@@ -10,7 +10,7 @@
 | M3 | Week 3 | 平台 API + 鉴权 + 并发 | sessions/runs/SSE/取消/限流/OpenAPI | curl 全流程；20 并发无 5xx | 完成（20 并发无 5xx；真实服务器冒烟待人工跑 smoke.sh） |
 | M4 | Week 4 | SDK + 计量 + 审计 + 压缩 | Python SDK、usage/audit、摘要压缩 | 外部人员 30 分钟接入 | 完成（真人接入验证待人工执行，quickstart.md 已备） |
 | M5 | Week 5 | 部署硬化 + 运维 + 可观测 | 非 root 镜像、备份恢复、metrics、安全复查 | 新机 30 分钟部署；备份演练 | 完成（线上演练项待 VPS，security-checklist 已分离标注） |
-| M6 | Week 6 | 控制台（P1）+ 文档 + RC | Playground/Key/Usage（可砍）、文档站、v0.1.0-rc | 3 个内测用户按文档接入 | 完成（浏览器实测全链路；内测邀请待人工，见 human-checklist） |
+| M6 | Week 6 | 控制台（P1）+ 文档 + RC | Playground/Key/Usage（可砍）、文档站、v0.1.0-rc | 3 个内测用户按文档接入 | 完成（浏览器实测全链路；内测邀请待人工，见 human-checklist）。2026-10-25 控制台升级为 zh 线实现（离线演示/断线重连/Key 绑定 Playground，见 devlog），端点契约已重新适配并跑通双端测试 |
 | M7 | Week 7 | 内测迭代 + 稳定性 | 修 P0/P1、性能、故障演练、runbook | 连续 5 天无 P0；成功率>98% | 机器侧完成（性能/故障/runbook/报告）；线上 5 天数据待人工 |
 | M8 | Week 8 | 上线 + 复盘 | v0.1.0 上线、7 天稳定运行、复盘与 v0.2 | 上线检查单全绿 | 文档/checklist 就绪；v0.1.0 待人工签收（go-live-checklist） |
 
