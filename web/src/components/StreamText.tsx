@@ -5,7 +5,7 @@ export function StreamText({ text, streaming }: { text: string; streaming: boole
   return (
     <>
       {text}
-      <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-accent align-text-bottom" />
+      <span className="ml-0.5 inline-block h-4 w-[2px] animate-caret bg-accent align-text-bottom" />
     </>
   );
 }

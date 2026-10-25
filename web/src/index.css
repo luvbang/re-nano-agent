@@ -9,28 +9,60 @@ body,
 }
 
 ::selection {
-  background: #78350f;
-  color: #fef3c7;
+  background: #f59e0b;
+  color: #171719;
 }
 
-/* 滚动条与深色控制台基调一致（枫叶琥珀 thumb） */
+/* 滚动条与深色控制台基调一致（line/control 同级灰阶） */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2c313c transparent;
+  scrollbar-color: #3a3a3e transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #2c313c;
+  background: #2a2a2e;
   border-radius: 4px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: #3b424f;
+  background: #3a3a3e;
 }
 *::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* 数字/ID/时长/日期一律终端等宽（data-terminal 的 face 决策），数字栈对齐 */
+.num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 选中态：1px 枫叶琥珀线，落在最近的既有边上（data-terminal 的 move） */
+.sel-left {
+  position: relative;
+}
+.sel-left::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: #f59e0b;
+}
+.sel-bottom {
+  position: relative;
+}
+.sel-bottom::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: #f59e0b;
 }
 
 /* ---------- 助手回复的 Markdown 排版（.md 容器） ---------- */
@@ -60,7 +92,7 @@ body,
 }
 .md h3,
 .md h4 {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
 }
 .md ul {
   margin: 0.5rem 0;
@@ -76,34 +108,33 @@ body,
   margin: 0.25rem 0;
 }
 .md li::marker {
-  color: #b45309;
+  color: #8a8c92;
 }
 .md a {
-  color: #fbbf24;
+  color: #f59e0b;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 .md blockquote {
   margin: 0.5rem 0;
   padding-left: 0.75rem;
-  border-left: 2px solid #262b36;
-  color: #a1a1aa;
+  border-left: 2px solid #222224;
+  color: #8a8c92;
 }
 .md code {
-  border-radius: 0.25rem;
-  background: #1c212b;
+  border-radius: 4px;
+  background: #212023;
   padding: 0.1rem 0.3rem;
-  font-size: 0.85em;
+  font-size: 0.9em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 .md pre {
   margin: 0.5rem 0;
   overflow-x: auto;
-  border: 1px solid #262b36;
-  border-radius: 0.5rem;
-  background: #0c0e12;
+  border-radius: 6px;
+  background: #0e0d11;
   padding: 0.75rem;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1.6;
 }
 .md pre code {
@@ -115,24 +146,24 @@ body,
   margin: 0.5rem 0;
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 .md th,
 .md td {
-  border: 1px solid #262b36;
+  border: 1px solid #222224;
   padding: 0.3rem 0.6rem;
   text-align: left;
 }
 .md th {
-  background: #1c212b;
-  font-weight: 600;
+  background: #1b1a1f;
+  font-weight: 500;
 }
 .md hr {
   margin: 0.75rem 0;
-  border-color: #262b36;
+  border-color: #222224;
 }
 .md img {
-  border-radius: 0.5rem;
+  border-radius: 6px;
   max-width: 100%;
 }
 
@@ -140,7 +171,7 @@ body,
 @keyframes msg-flash {
   0%,
   55% {
-    background-color: rgb(245 158 11 / 0.16);
+    background-color: rgb(245 158 11 / 0.14);
   }
   100% {
     background-color: transparent;
@@ -148,5 +179,5 @@ body,
 }
 .msg-flash {
   animation: msg-flash 1.6s ease-out;
-  border-radius: 0.5rem;
+  border-radius: 6px;
 }

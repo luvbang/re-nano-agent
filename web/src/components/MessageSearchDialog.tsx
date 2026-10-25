@@ -67,9 +67,9 @@ export function MessageSearchDialog({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-md animate-fade-up overflow-hidden rounded-xl border border-surface-border bg-surface-raised shadow-pop">
-        <div className="border-b border-surface-border px-4 py-3">
-          <h2 className="mb-2 text-sm font-semibold text-zinc-100">{copy.messageSearch.title}</h2>
+      <div className="w-full max-w-md animate-fade-up overflow-hidden rounded-lg border border-line bg-panel shadow-pop">
+        <div className="border-b border-line px-4 py-3">
+          <h2 className="mb-2 text-base font-semibold text-white">{copy.messageSearch.title}</h2>
           <input
             autoFocus
             value={q}
@@ -79,12 +79,12 @@ export function MessageSearchDialog({
               if (e.key === "Enter" && results[0]) jump(results[0].id);
             }}
             placeholder={copy.messageSearch.placeholder}
-            className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
+            className="h-9 w-full rounded-lg border border-control bg-ground px-3 text-sm text-ink placeholder:text-mut focus:border-accent focus:outline-none"
           />
         </div>
         <div className="max-h-[50vh] overflow-y-auto p-2">
           {q.trim() ? (
-            <p className="px-2 pb-1 pt-1 text-[10px] font-medium uppercase tracking-wider text-zinc-600">
+            <p className="px-2 pb-1 pt-1 text-xs text-mut">
               {results.length > 0 ? copy.messageSearch.hits(results.length) : copy.messageSearch.empty}
             </p>
           ) : null}
@@ -95,10 +95,10 @@ export function MessageSearchDialog({
                   <button
                     type="button"
                     onClick={() => jump(hit.id)}
-                    className="block w-full rounded-lg px-3 py-2 text-left hover:bg-surface"
+                    className="block w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-raised"
                   >
-                    <span className="text-[10px] text-zinc-600">{hit.label}</span>
-                    <p className="truncate text-xs text-zinc-200">{hit.preview}</p>
+                    <span className="text-xs text-mut">{hit.label}</span>
+                    <p className="truncate text-sm text-ink">{hit.preview}</p>
                   </button>
                 </li>
               ))}

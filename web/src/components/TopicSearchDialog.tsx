@@ -49,9 +49,9 @@ export function TopicSearchDialog({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-md animate-fade-up overflow-hidden rounded-xl border border-surface-border bg-surface-raised shadow-pop">
-        <div className="border-b border-surface-border px-4 py-3">
-          <h2 className="mb-2 text-sm font-semibold text-zinc-100">{copy.topicSearch.title}</h2>
+      <div className="w-full max-w-md animate-fade-up overflow-hidden rounded-lg border border-line bg-panel shadow-pop">
+        <div className="border-b border-line px-4 py-3">
+          <h2 className="mb-2 text-base font-semibold text-white">{copy.topicSearch.title}</h2>
           <input
             autoFocus
             value={q}
@@ -61,15 +61,15 @@ export function TopicSearchDialog({
               if (e.key === "Enter" && results[0]) jump(results[0].id);
             }}
             placeholder={copy.topicSearch.placeholder}
-            className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
+            className="h-9 w-full rounded-lg border border-control bg-ground px-3 text-sm text-ink placeholder:text-mut focus:border-accent focus:outline-none"
           />
         </div>
         <div className="max-h-[50vh] overflow-y-auto p-2">
-          <p className="px-2 pb-1 pt-1 text-[10px] font-medium uppercase tracking-wider text-zinc-600">
+          <p className="px-2 pb-1 pt-1 text-xs text-mut">
             {q.trim() ? copy.topicSearch.hits(results.length) : copy.sidebar.topics}
           </p>
           {results.length === 0 ? (
-            <p className="px-2 py-4 text-center text-xs text-zinc-600">{copy.topicSearch.empty}</p>
+            <p className="px-2 py-4 text-center text-sm text-mut">{copy.topicSearch.empty}</p>
           ) : (
             <ul>
               {results.map((s) => (
@@ -77,19 +77,17 @@ export function TopicSearchDialog({
                   <button
                     type="button"
                     onClick={() => jump(s.id)}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-surface"
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors hover:bg-raised"
                   >
-                    <span className="min-w-0 flex-1 truncate text-xs text-zinc-200">
+                    <span className="min-w-0 flex-1 truncate text-sm text-ink">
                       {s.title || copy.sidebar.untitled}
                     </span>
                     {s.id === currentId ? (
-                      <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] text-amber-300">
+                      <span className="rounded bg-accent/10 px-1.5 py-0.5 text-xs text-accent">
                         {copy.topicSearch.current}
                       </span>
                     ) : null}
-                    <span className="shrink-0 text-[10px] tabular-nums text-zinc-600">
-                      {day(s.updated_at)}
-                    </span>
+                    <span className="num shrink-0 text-xs text-mut">{day(s.updated_at)}</span>
                   </button>
                 </li>
               ))}

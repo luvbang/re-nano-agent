@@ -1,0 +1,1528 @@
+{
+ "url": "http://localhost:5173/usage?demo=1",
+ "at": "2026-10-25T16:11:38.859Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 1,
+   "filled": [
+    0.64
+   ],
+   "motion": {
+    "elements": 2,
+    "css": 1,
+    "transitions": 0,
+    "scripted": 1,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 900,
+     "screens": 1,
+     "words": 137,
+     "img": 0,
+     "video": 0,
+     "canvas": 0,
+     "svg": 3,
+     "sections": 0,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [
+      "🍁",
+      "🔍"
+     ],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "用量",
+     "words": 1,
+     "chars": 2,
+     "lines": 1,
+     "size": 18,
+     "vw": 1.3,
+     "font": "ui-sans-serif",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.56,
+     "top": 45,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "用量",
+     "words": 1,
+     "lines": 1,
+     "size": 18,
+     "font": "ui-sans-serif"
+    },
+    "headings": [],
+    "headingSummary": {
+     "count": 0,
+     "maxLines": 0,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "ui-sans-serif",
+       "share": 0.74,
+       "mono": false
+      },
+      {
+       "family": "ui-monospace",
+       "share": 0.26,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      10,
+      11,
+      12,
+      14,
+      16,
+      18
+     ],
+     "sizeCount": 6,
+     "notLoaded": [],
+     "body": null,
+     "measureChars": null,
+     "max": {
+      "size": 18,
+      "vw": 1.3,
+      "font": "ui-sans-serif",
+      "text": "🍁"
+     },
+     "monoShare": 0.26,
+     "monoProseShare": 0.26,
+     "monoFamilies": [
+      "ui-monospace"
+     ],
+     "monoSamples": [
+      "2026-10-11",
+      "2026-10-12",
+      "2026-10-13",
+      "2026-10-14",
+      "2026-10-15",
+      "2026-10-16"
+     ],
+     "microLabels": 1,
+     "microLabelShare": 0.003,
+     "microSamples": [
+      "话题"
+     ],
+     "upperShare": 0.02,
+     "centerShare": 0.14,
+     "smallText": 2
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#0f1115",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.17,
+      "l": 0.07
+     },
+     "dark": true,
+     "sectionBgs": [],
+     "textColors": [
+      {
+       "color": "#d4d4d8",
+       "share": 0.49
+      },
+      {
+       "color": "#a1a1aa",
+       "share": 0.25
+      },
+      {
+       "color": "#71717a",
+       "share": 0.13
+      },
+      {
+       "color": "#fcd34d",
+       "share": 0.05
+      },
+      {
+       "color": "#f4f4f5",
+       "share": 0.04
+      }
+     ],
+     "button": {
+      "bg": "#0f1115",
+      "hsl": {
+       "h": 220,
+       "s": 0.17,
+       "l": 0.07
+      },
+      "fg": "#fde68a"
+     },
+     "lowContrast": [
+      {
+       "text": "自托管 Agent 运行时",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 10,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "API Keys",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "总运行数",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "总 tokens",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "运行次数",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "输入 tokens",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      }
+     ]
+    },
+    "buttons": {
+     "count": 3,
+     "inHero": 3,
+     "radius": 6,
+     "height": 34,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "用量",
+      "按模型",
+      "⬇ 导出 CSV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 7,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "button.flex.w-full → rgb(255, 255, 255) 0px 0px 0px 0px, rgba(245, 158, 11, 0.3) 0px 0px 0px 1px, rgb",
+      "div.rounded-lg.border → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.rounded-lg.border → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.rounded-lg.border → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0"
+     ],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 3,
+     "hairlineSamples": [
+      "aside.relative.flex 264px",
+      "div.border-t.border-surface-border 263px",
+      "div.border-b.border-amber-900/50 1176px"
+     ],
+     "outlinedBoxes": 3,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 3,
+     "boxRadius": 8,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "svg",
+      "ratio": 0.18
+     }
+    ],
+    "nav": {
+     "links": 0,
+     "fixed": false,
+     "height": 140,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": []
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 900,
+    "margins": {
+     "left": 12,
+     "right": 182
+    },
+    "sections": [
+     {
+      "sel": "div.rounded-lg.border",
+      "tag": "div",
+      "top": 281,
+      "height": 314,
+      "words": 2,
+      "media": 1,
+      "middle": 0,
+      "heading": null,
+      "left": 437,
+      "right": 173,
+      "textLeft": 818,
+      "textRight": 546,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.rounded-lg.border",
+      "tag": "div",
+      "top": 611,
+      "height": 374,
+      "words": 44,
+      "media": 0,
+      "middle": 156,
+      "heading": null,
+      "left": 433,
+      "right": 225,
+      "textLeft": 433,
+      "textRight": 225,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "用量",
+      "size": 18,
+      "top": 45,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 420,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 1,
+    "bodySize": 16,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0.16,
+    "voidBox": {
+     "x": 0,
+     "y": 240,
+     "w": 420,
+     "h": 480
+    }
+   },
+   "app": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "dark": true,
+    "ground": "#0f1115",
+    "sidebar": {
+     "w": 264,
+     "tag": "aside",
+     "links": 12,
+     "share": 0.18
+    },
+    "topbar": null,
+    "canvas": {
+     "left": 169,
+     "right": 169
+    },
+    "hero": {
+     "text": "用量",
+     "words": 1,
+     "chars": 2,
+     "lines": 1,
+     "size": 18,
+     "vw": 1.3,
+     "font": "ui-sans-serif",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.56,
+     "top": 45,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 1,
+    "layout": {
+     "panels": 7,
+     "firstScreen": 7,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 8,
+     "radii": [
+      [
+       8,
+       6
+      ],
+      [
+       0,
+       2
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 6,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 60,
+     "leftAligned": 0,
+     "figures": 52,
+     "tabularShare": 0.94,
+     "kpiMax": 18
+    },
+    "rows": {
+     "count": 15,
+     "median": 29
+    },
+    "chartHues": 2,
+    "placeholders": [],
+    "type": {
+     "under13": 0.93,
+     "tiny": 1,
+     "tinySamples": [
+      "自托管 Agent 运行时 10px"
+     ],
+     "sizes": [
+      10,
+      11,
+      12,
+      14,
+      16,
+      18
+     ]
+    },
+    "title": {
+     "text": "用量",
+     "size": 18,
+     "top": 45
+    },
+    "colourShare": 0.042
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 1,
+   "filled": [
+    0.82
+   ],
+   "motion": {
+    "elements": 2,
+    "css": 1,
+    "transitions": 0,
+    "scripted": 1,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 1024,
+     "screens": 1,
+     "words": 134,
+     "img": 0,
+     "video": 0,
+     "canvas": 0,
+     "svg": 3,
+     "sections": 0,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [
+      "🍁",
+      "🔍"
+     ],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "用量",
+     "words": 1,
+     "chars": 2,
+     "lines": 1,
+     "size": 18,
+     "vw": 2.3,
+     "font": "ui-sans-serif",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.56,
+     "top": 45,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "用量",
+     "words": 1,
+     "lines": 1,
+     "size": 18,
+     "font": "ui-sans-serif"
+    },
+    "headings": [],
+    "headingSummary": {
+     "count": 0,
+     "maxLines": 0,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "ui-sans-serif",
+       "share": 0.74,
+       "mono": false
+      },
+      {
+       "family": "ui-monospace",
+       "share": 0.26,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      10,
+      11,
+      12,
+      14,
+      16,
+      18
+     ],
+     "sizeCount": 6,
+     "notLoaded": [],
+     "body": null,
+     "measureChars": null,
+     "max": {
+      "size": 18,
+      "vw": 2.3,
+      "font": "ui-sans-serif",
+      "text": "🍁"
+     },
+     "monoShare": 0.26,
+     "monoProseShare": 0.26,
+     "monoFamilies": [
+      "ui-monospace"
+     ],
+     "monoSamples": [
+      "2026-10-11",
+      "2026-10-12",
+      "2026-10-13",
+      "2026-10-14",
+      "2026-10-15",
+      "2026-10-16"
+     ],
+     "microLabels": 1,
+     "microLabelShare": 0.003,
+     "microSamples": [
+      "话题"
+     ],
+     "upperShare": 0.02,
+     "centerShare": 0.14,
+     "smallText": 2
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#0f1115",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.17,
+      "l": 0.07
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#171a21",
+       "top": 0,
+       "hsl": {
+        "h": 222,
+        "s": 0.18,
+        "l": 0.11
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#d4d4d8",
+       "share": 0.49
+      },
+      {
+       "color": "#a1a1aa",
+       "share": 0.25
+      },
+      {
+       "color": "#71717a",
+       "share": 0.13
+      },
+      {
+       "color": "#fcd34d",
+       "share": 0.05
+      },
+      {
+       "color": "#f4f4f5",
+       "share": 0.04
+      }
+     ],
+     "button": {
+      "bg": "#0f1115",
+      "hsl": {
+       "h": 220,
+       "s": 0.17,
+       "l": 0.07
+      },
+      "fg": "#fde68a"
+     },
+     "lowContrast": [
+      {
+       "text": "自托管 Agent 运行时",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 10,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "API Keys",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "总运行数",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "总 tokens",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "运行次数",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "输入 tokens",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      }
+     ]
+    },
+    "buttons": {
+     "count": 3,
+     "inHero": 3,
+     "radius": 6,
+     "height": 34,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "用量",
+      "按模型",
+      "⬇ 导出 CSV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 7,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "button.flex.w-full → rgb(255, 255, 255) 0px 0px 0px 0px, rgba(245, 158, 11, 0.3) 0px 0px 0px 1px, rgb",
+      "div.rounded-lg.border → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.rounded-lg.border → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.rounded-lg.border → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0"
+     ],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 3,
+     "hairlineSamples": [
+      "aside.relative.flex 264px",
+      "div.border-t.border-surface-border 263px",
+      "div.border-b.border-amber-900/50 504px"
+     ],
+     "outlinedBoxes": 3,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 3,
+     "boxRadius": 8,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 3,
+       "iconTopped": false,
+       "rounded": true,
+       "top": 89
+      }
+     ]
+    },
+    "heroMedia": [
+     {
+      "type": "svg",
+      "ratio": 0.16
+     }
+    ],
+    "nav": {
+     "links": 0,
+     "fixed": false,
+     "height": 140,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": []
+   },
+   "layout": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "pageH": 1024,
+    "margins": {
+     "left": 8,
+     "right": 33
+    },
+    "sections": [
+     {
+      "sel": "div.rounded-lg.border",
+      "tag": "div",
+      "top": 89,
+      "height": 132,
+      "words": 6,
+      "media": 0,
+      "middle": 12,
+      "heading": null,
+      "left": 293,
+      "right": 29,
+      "textLeft": 293,
+      "textRight": 42,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.rounded-lg.border",
+      "tag": "div",
+      "top": 327,
+      "height": 314,
+      "words": 2,
+      "media": 1,
+      "middle": 0,
+      "heading": null,
+      "left": 297,
+      "right": 33,
+      "textLeft": 482,
+      "textRight": 210,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.rounded-lg.border",
+      "tag": "div",
+      "top": 657,
+      "height": 374,
+      "words": 35,
+      "media": 0,
+      "middle": 35,
+      "heading": null,
+      "left": 293,
+      "right": 85,
+      "textLeft": 293,
+      "textRight": 85,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "用量",
+      "size": 18,
+      "top": 45,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 280,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 1,
+    "bodySize": 16,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "dark": true,
+    "ground": "#0f1115",
+    "sidebar": {
+     "w": 264,
+     "tag": "aside",
+     "links": 12,
+     "share": 0.34
+    },
+    "topbar": null,
+    "canvas": {
+     "left": 29,
+     "right": 29
+    },
+    "hero": {
+     "text": "用量",
+     "words": 1,
+     "chars": 2,
+     "lines": 1,
+     "size": 18,
+     "vw": 2.3,
+     "font": "ui-sans-serif",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.56,
+     "top": 45,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 1,
+    "layout": {
+     "panels": 7,
+     "firstScreen": 7,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 8,
+     "radii": [
+      [
+       8,
+       6
+      ],
+      [
+       0,
+       2
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 6,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 60,
+     "leftAligned": 0,
+     "figures": 52,
+     "tabularShare": 0.94,
+     "kpiMax": 18
+    },
+    "rows": {
+     "count": 15,
+     "median": 45
+    },
+    "chartHues": 2,
+    "placeholders": [],
+    "type": {
+     "under13": 0.93,
+     "tiny": 1,
+     "tinySamples": [
+      "自托管 Agent 运行时 10px"
+     ],
+     "sizes": [
+      10,
+      11,
+      12,
+      14,
+      16,
+      18
+     ]
+    },
+    "title": {
+     "text": "用量",
+     "size": 18,
+     "top": 45
+    },
+    "colourShare": 0.035
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 1,
+   "filled": [
+    0.81
+   ],
+   "motion": {
+    "elements": 2,
+    "css": 1,
+    "transitions": 0,
+    "scripted": 1,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 844,
+     "screens": 1,
+     "words": 129,
+     "img": 0,
+     "video": 0,
+     "canvas": 0,
+     "svg": 3,
+     "sections": 0,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 2,
+     "brokenImages": [],
+     "emoji": [
+      "🍁",
+      "🔍"
+     ],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "用量",
+     "words": 1,
+     "chars": 2,
+     "lines": 1,
+     "size": 18,
+     "vw": 4.6,
+     "font": "ui-sans-serif",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.56,
+     "top": 93,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "用量",
+     "words": 1,
+     "lines": 1,
+     "size": 18,
+     "font": "ui-sans-serif"
+    },
+    "headings": [],
+    "headingSummary": {
+     "count": 0,
+     "maxLines": 0,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "ui-sans-serif",
+       "share": 0.74,
+       "mono": false
+      },
+      {
+       "family": "ui-monospace",
+       "share": 0.26,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      10,
+      11,
+      12,
+      14,
+      16,
+      18
+     ],
+     "sizeCount": 6,
+     "notLoaded": [],
+     "body": null,
+     "measureChars": null,
+     "max": {
+      "size": 18,
+      "vw": 4.6,
+      "font": "ui-sans-serif",
+      "text": "🍁"
+     },
+     "monoShare": 0.26,
+     "monoProseShare": 0.26,
+     "monoFamilies": [
+      "ui-monospace"
+     ],
+     "monoSamples": [
+      "2026-10-11",
+      "2026-10-12",
+      "2026-10-13",
+      "2026-10-14",
+      "2026-10-15",
+      "2026-10-16"
+     ],
+     "microLabels": 1,
+     "microLabelShare": 0.003,
+     "microSamples": [
+      "话题"
+     ],
+     "upperShare": 0.02,
+     "centerShare": 0.14,
+     "smallText": 2
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#0f1115",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.17,
+      "l": 0.07
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#171a21",
+       "top": 0,
+       "hsl": {
+        "h": 222,
+        "s": 0.18,
+        "l": 0.11
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#d4d4d8",
+       "share": 0.49
+      },
+      {
+       "color": "#a1a1aa",
+       "share": 0.25
+      },
+      {
+       "color": "#71717a",
+       "share": 0.13
+      },
+      {
+       "color": "#fcd34d",
+       "share": 0.05
+      },
+      {
+       "color": "#f4f4f5",
+       "share": 0.04
+      }
+     ],
+     "button": {
+      "bg": "#0f1115",
+      "hsl": {
+       "h": 220,
+       "s": 0.17,
+       "l": 0.07
+      },
+      "fg": "#fde68a"
+     },
+     "lowContrast": [
+      {
+       "text": "自托管 Agent 运行时",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 10,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "API Keys",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "总运行数",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "总 tokens",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "运行次数",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      },
+      {
+       "text": "输入 tokens",
+       "ratio": 3.6,
+       "need": 4.5,
+       "size": 12,
+       "fg": "#71717a",
+       "bg": "#171a21"
+      }
+     ]
+    },
+    "buttons": {
+     "count": 2,
+     "inHero": 2,
+     "radius": 8,
+     "height": 28,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "用量",
+      "⬇ 导出 CSV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 7,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "button.flex.w-full → rgb(255, 255, 255) 0px 0px 0px 0px, rgba(245, 158, 11, 0.3) 0px 0px 0px 1px, rgb",
+      "div.rounded-lg.border → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.rounded-lg.border → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.rounded-lg.border → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0"
+     ],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 2,
+     "hairlineSamples": [
+      "aside.relative.flex 264px",
+      "div.border-t.border-surface-border 263px"
+     ],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 0,
+     "boxRadius": 0,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 0,
+     "fixed": false,
+     "height": 140,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": []
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 844,
+    "margins": {
+     "left": 8,
+     "right": 21
+    },
+    "sections": [
+     {
+      "sel": "div.mt-1.min-h-0",
+      "tag": "div",
+      "top": 105,
+      "height": 549,
+      "words": 3,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": 8,
+      "right": 159,
+      "textLeft": 16,
+      "textRight": 324,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.border-t.border-surface-border",
+      "tag": "div",
+      "top": 653,
+      "height": 191,
+      "words": 8,
+      "media": 0,
+      "middle": 140,
+      "heading": null,
+      "left": 18,
+      "right": 139,
+      "textLeft": 18,
+      "textRight": 148,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "用量",
+      "size": 18,
+      "top": 93,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 280,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 1,
+    "bodySize": 16,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "dark": true,
+    "ground": "#0f1115",
+    "sidebar": null,
+    "topbar": {
+     "h": 57
+    },
+    "canvas": {
+     "left": 12,
+     "right": -143
+    },
+    "hero": {
+     "text": "用量",
+     "words": 1,
+     "chars": 2,
+     "lines": 1,
+     "size": 18,
+     "vw": 4.6,
+     "font": "ui-sans-serif",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.56,
+     "top": 93,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 1,
+     "firstScreen": 1,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 2,
+     "radii": [
+      [
+       0,
+       2
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 60,
+     "leftAligned": 0,
+     "figures": 52,
+     "tabularShare": 0.94,
+     "kpiMax": 18
+    },
+    "rows": {
+     "count": 15,
+     "median": 45
+    },
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.93,
+     "tiny": 1,
+     "tinySamples": [
+      "自托管 Agent 运行时 10px"
+     ],
+     "sizes": [
+      10,
+      11,
+      12,
+      14,
+      16,
+      18
+     ]
+    },
+    "title": {
+     "text": "用量",
+     "size": 18,
+     "top": 93
+    },
+    "colourShare": 0.018
+   },
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "WARN",
+   "id": "micro-label",
+   "width": 1440,
+   "message": "1 tiny uppercase letter-spaced label(s): \"话题\"",
+   "fix": "Prefer sentence case at body size.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "emoji",
+   "width": 1440,
+   "message": "Emoji in the page: 🍁 🔍",
+   "fix": "Remove. Use words or real imagery.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "contrast",
+   "width": 1440,
+   "message": "Low-contrast text: \"自托管 Agent 运行时\" 3.6:1 needs 4.5:1; \"API Keys\" 3.6:1 needs 4.5:1; \"总运行数\" 3.6:1 needs 4.5:1; \"总 tokens\" 3.6:1 needs 4.5:1",
+   "fix": "Darken or lighten the text colour.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "dev-server",
+   "width": 1440,
+   "message": "This page is served by a development server (Vite, webpack or Next in dev mode).",
+   "fix": "Run the last gate on the production build too (vite build && vite preview, next build && next start, or the built index.html): minifiers and bundlers change the CSS a visitor receives.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "tiny-text",
+   "width": 1440,
+   "message": "93% of the text is under 13px.",
+   "fix": "Data and labels read at 13–14px; keep 11–12px for sublines and axis ticks.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "D:\\git-project\\agent-platform\\web\\.taste-skill\\before\\usage\\desktop-fold.jpg",
+   "pages": [
+    "D:\\git-project\\agent-platform\\web\\.taste-skill\\before\\usage\\desktop-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "D:\\git-project\\agent-platform\\web\\.taste-skill\\before\\usage\\tablet-fold.jpg",
+   "pages": [
+    "D:\\git-project\\agent-platform\\web\\.taste-skill\\before\\usage\\tablet-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "D:\\git-project\\agent-platform\\web\\.taste-skill\\before\\usage\\mobile-fold.jpg",
+   "pages": [
+    "D:\\git-project\\agent-platform\\web\\.taste-skill\\before\\usage\\mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

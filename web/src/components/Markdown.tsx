@@ -9,7 +9,7 @@ import remarkGfm from "remark-gfm";
 
 export const MarkdownView = memo(function MarkdownView({ text }: { text: string }) {
   return (
-    <div className="md text-sm text-zinc-200">
+    <div className="md text-base text-ink">
       <Markdown remarkPlugins={[remarkGfm]}>{text}</Markdown>
     </div>
   );

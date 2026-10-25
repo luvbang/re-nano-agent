@@ -5,7 +5,8 @@ import { useNavigate } from "react-router";
 import { useAdminKey } from "../hooks/useAdminKey";
 import { ApiRequestError, createRealClient } from "../api/client";
 import { copy } from "../lib/copy";
-import { Button, Card, Input, Spinner } from "../components/ui";
+import { Button, Input, Spinner } from "../components/ui";
+import { MapleMark } from "../components/icons";
 
 export function LoginPage() {
   const { signIn } = useAdminKey();
@@ -42,26 +43,23 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface p-4">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,158,11,0.06),transparent_55%)]" />
-      <Card className="relative w-full max-w-sm p-6 shadow-card">
-        <div className="mb-4 flex items-center gap-3">
-          <span className="flex h-11 w-11 select-none items-center justify-center rounded-2xl bg-gradient-to-br from-accent/30 to-accent/10 text-2xl ring-1 ring-accent/30">
-            {copy.app.brand}
-          </span>
+    <div className="flex min-h-screen items-center justify-center bg-ground p-4 text-ink">
+      <div className="w-full max-w-sm rounded-lg border border-line bg-panel p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <MapleMark className="h-8 w-8 text-accent" />
           <div className="leading-tight">
-            <h1 className="text-lg font-semibold">{copy.login.title}</h1>
-            <p className="mt-0.5 text-xs text-zinc-500">{copy.app.subtitle}</p>
+            <h1 className="text-xl font-semibold text-white">{copy.login.title}</h1>
+            <p className="mt-0.5 text-xs text-mut">{copy.app.subtitle}</p>
           </div>
         </div>
         <form
-          className="mt-5 space-y-3"
+          className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
             void submit("real");
           }}
         >
-          <label className="block text-sm text-zinc-300" htmlFor="admin-key">
+          <label className="block text-sm text-ink" htmlFor="admin-key">
             {copy.login.keyLabel}
           </label>
           <Input
@@ -75,19 +73,19 @@ export function LoginPage() {
               setError("");
             }}
           />
-          {error ? <div className="text-xs text-red-400">{error}</div> : null}
+          {error ? <div className="text-sm text-neg">{error}</div> : null}
           <Button type="submit" className="w-full" disabled={checking}>
             {checking ? <Spinner /> : null}
             {copy.login.submit}
           </Button>
         </form>
-        <div className="mt-5 border-t border-surface-border pt-4">
+        <div className="mt-5 border-t border-line pt-4">
           <Button variant="ghost" className="w-full" onClick={() => void submit("demo")}>
             {copy.login.demo}
           </Button>
-          <p className="mt-2 text-center text-xs text-zinc-600">{copy.login.demoHint}</p>
+          <p className="mt-2 text-center text-xs text-mut">{copy.login.demoHint}</p>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { copy } from "../lib/copy";
 import { MarkdownView } from "./Markdown";
 import { StreamText } from "./StreamText";
 import { ToolCallCard } from "./ToolCallCard";
+import { CopyIcon, CheckIcon } from "./icons";
 
 function hm(iso?: string | null): string | null {
   return iso ? iso.slice(11, 16) : null;
@@ -17,10 +18,8 @@ function hm(iso?: string | null): string | null {
 function HoverActions({ text, createdAt }: { text: string; createdAt?: string | null }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="flex shrink-0 items-center gap-1 self-end opacity-0 transition-opacity duration-150 group-hover/msg:opacity-100">
-      {hm(createdAt) && (
-        <span className="text-[10px] tabular-nums text-zinc-600">{hm(createdAt)}</span>
-      )}
+    <div className="flex shrink-0 items-center gap-1.5 self-end opacity-0 transition-opacity duration-150 group-hover/msg:opacity-100">
+      {hm(createdAt) && <span className="num text-2xs text-mut">{hm(createdAt)}</span>}
       <button
         type="button"
         title={copied ? copy.playground.copied : copy.playground.copyText}
@@ -34,9 +33,9 @@ function HoverActions({ text, createdAt }: { text: string; createdAt?: string | 
             })
             .catch(() => undefined);
         }}
-        className="rounded p-1 text-[11px] text-zinc-500 hover:bg-surface-raised hover:text-zinc-200"
+        className="rounded p-1 text-mut transition-colors hover:bg-raised hover:text-ink"
       >
-        {copied ? "✓" : "⧉"}
+        {copied ? <CheckIcon /> : <CopyIcon />}
       </button>
     </div>
   );
@@ -46,7 +45,7 @@ export const ChatMessageView = memo(function ChatMessageView({ item }: { item: C
   if (item.kind === "user") {
     return (
       <div className="group/msg flex animate-fade-up items-end gap-2" data-msg-id={item.id}>
-        <div className="order-2 max-w-[85%] rounded-2xl rounded-br-md bg-accent/15 px-3.5 py-2 text-sm leading-relaxed text-amber-50 ring-1 ring-accent/25">
+        <div className="order-2 max-w-[85%] rounded-lg rounded-br-sm bg-accent/10 px-3.5 py-2 text-base leading-relaxed text-ink">
           <p className="whitespace-pre-wrap break-words">{item.text}</p>
         </div>
         <div className="order-1 flex-1" />
@@ -64,7 +63,7 @@ export const ChatMessageView = memo(function ChatMessageView({ item }: { item: C
         ))}
         {item.text || item.streaming ? (
           item.streaming ? (
-            <div className="text-sm leading-relaxed text-zinc-100">
+            <div className="text-base leading-relaxed text-ink">
               <StreamText text={item.text} streaming={item.streaming} />
             </div>
           ) : (

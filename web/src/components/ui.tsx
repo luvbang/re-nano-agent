@@ -1,8 +1,8 @@
-/** 极简 UI 基元（shadcn 风格的仓库内组件，按需精简到按钮/卡片/输入/徽标）。 */
+/** 极简 UI 基元（仓库内组件，按需精简到按钮/卡片/输入/徽标）。 */
 
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 
-type ButtonVariant = "primary" | "ghost" | "danger";
+type ButtonVariant = "primary" | "ghost" | "danger" | "text";
 
 export function Button({
   variant = "primary",
@@ -10,35 +10,33 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
   const base =
-    "inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none";
+    "inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent disabled:opacity-40 disabled:pointer-events-none";
   const styles: Record<ButtonVariant, string> = {
-    primary: "bg-accent text-zinc-950 hover:bg-accent-soft",
-    ghost: "bg-transparent text-zinc-300 hover:bg-surface-raised border border-surface-border",
-    danger: "bg-red-900/60 text-red-200 hover:bg-red-800/70 border border-red-900",
+    // 深色主题的主控件靠反白（白底黑字），品牌琥珀只留给选中线与数据
+    primary: "bg-ink text-[#131217] hover:bg-white",
+    ghost: "bg-transparent text-ink border border-line hover:bg-raised hover:border-control",
+    danger: "bg-transparent text-neg border border-neg/60 hover:bg-pill-neg",
+    text: "bg-transparent text-mut hover:text-ink",
   };
   return <button className={`${base} ${styles[variant]} ${className}`} {...props} />;
 }
 
 export function Card({ className = "", children }: { className?: string; children: ReactNode }) {
-  return (
-    <div
-      className={`rounded-lg border border-surface-border bg-surface-raised shadow-sm ${className}`}
-    >
-      {children}
-    </div>
-  );
+  // 分隔靠 1px 结构线与色阶，静止的卡片不带阴影
+  return <div className={`rounded-md border border-line bg-panel ${className}`}>{children}</div>;
 }
 
 export function Input({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className={`w-full rounded-md border border-surface-border bg-surface px-3 py-2 text-sm
-        text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none ${className}`}
+      className={`h-9 w-full rounded-lg border border-control bg-ground px-3 text-sm text-ink
+        placeholder:text-mut focus:border-accent focus:outline-none transition-colors ${className}`}
       {...props}
     />
   );
 }
 
+/** 状态 pill：同色相的深底浅字对（token 见 tailwind.config pill.*），flex:none 防挤压。 */
 export function Badge({
   children,
   tone = "neutral",
@@ -49,14 +47,14 @@ export function Badge({
   className?: string;
 }) {
   const tones = {
-    neutral: "bg-zinc-800 text-zinc-300 border-zinc-700",
-    success: "bg-emerald-900/50 text-emerald-300 border-emerald-800",
-    warn: "bg-amber-900/50 text-amber-300 border-amber-800",
-    error: "bg-red-900/50 text-red-300 border-red-800",
+    neutral: "bg-pill-neutral text-[#bdbdc0] border-control",
+    success: "bg-pill-pos text-pos border-pos/30",
+    warn: "bg-pill-warn text-warn border-warn/30",
+    error: "bg-pill-neg text-neg border-neg/30",
   } as const;
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${tones[tone]} ${className}`}
+      className={`inline-flex h-5 flex-none items-center gap-1 whitespace-nowrap rounded-full border px-2 text-xs font-medium ${tones[tone]} ${className}`}
     >
       {children}
     </span>
@@ -66,7 +64,7 @@ export function Badge({
 export function Spinner({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-600 border-t-accent ${className}`}
+      className={`inline-block h-4 w-4 animate-spin rounded-full border-2 border-control border-t-accent ${className}`}
       role="status"
       aria-label="loading"
     />

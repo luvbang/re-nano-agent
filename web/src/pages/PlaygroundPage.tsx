@@ -13,6 +13,7 @@ import { historyToItems, type ChatItem } from "../projection/run-projection";
 import { ChatMessageView } from "../components/ChatMessage";
 import { MessageSearchDialog } from "../components/MessageSearchDialog";
 import { Badge, Button, Spinner } from "../components/ui";
+import { MapleMark, MagnifierIcon } from "../components/icons";
 import { copy } from "../lib/copy";
 import type { Usage } from "../api/types";
 
@@ -171,8 +172,8 @@ export function PlaygroundPage() {
   return (
     <div className="flex h-full min-w-0 flex-col">
       {/* 会话头 */}
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-surface-border px-4">
-        <h1 className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-100">
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4 sm:px-6">
+        <h1 className="min-w-0 flex-1 truncate text-lg font-semibold text-white">
           {sessionTitle ?? copy.sidebar.untitled}
         </h1>
         <button
@@ -181,27 +182,27 @@ export function PlaygroundPage() {
           aria-label={copy.messageSearch.open}
           onClick={() => setMsgSearchOpen(true)}
           disabled={items.length === 0}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-surface-raised hover:text-zinc-200 disabled:opacity-40"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-mut transition-colors hover:bg-raised hover:text-ink disabled:opacity-40"
         >
-          🔍
+          <MagnifierIcon />
         </button>
         {sending ? (
-          <Button variant="danger" className="!px-2.5 !py-1 !text-xs" onClick={() => void cancel()}>
+          <Button variant="danger" className="!h-7 !px-3 !text-xs" onClick={() => void cancel()}>
             ■ {copy.playground.stop}
           </Button>
         ) : null}
         {playgroundKey ? (
-          <Badge tone="warn">
-            <span className="flex items-center gap-1.5 text-[11px]">
+          <Badge tone="warn" className="max-w-[52vw] sm:max-w-none">
+            <span className="min-w-0 truncate">
               {copy.playground.projectKeyBadge(playgroundKey.slice(0, 10))}
-              <button
-                type="button"
-                className="underline underline-offset-2 hover:text-amber-100"
-                onClick={() => setPlaygroundKey(null)}
-              >
-                {copy.playground.useAdminKeyAgain}
-              </button>
             </span>
+            <button
+              type="button"
+              className="flex-none underline underline-offset-2 hover:text-white"
+              onClick={() => setPlaygroundKey(null)}
+            >
+              {copy.playground.useAdminKeyAgain}
+            </button>
           </Badge>
         ) : null}
       </header>
@@ -209,14 +210,14 @@ export function PlaygroundPage() {
       {/* 消息流 */}
       <div className="relative min-h-0 flex-1">
         <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
-          <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
+          <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 sm:px-6">
             {showBindKey ? (
               <div className="flex h-[52vh] flex-col items-center justify-center gap-3 text-center">
-                <span className="text-5xl">{copy.app.brand}</span>
-                <h2 className="text-xl font-semibold text-zinc-100">
+                <MapleMark className="h-10 w-10 text-accent" />
+                <h2 className="text-xl font-semibold text-white">
                   {copy.playground.bindKeyTitle}
                 </h2>
-                <p className="max-w-sm text-xs leading-relaxed text-zinc-500">
+                <p className="max-w-sm text-sm leading-relaxed text-mut">
                   {copy.playground.bindKeyHint}
                 </p>
                 <Button onClick={() => navigate("/keys")}>
@@ -225,11 +226,11 @@ export function PlaygroundPage() {
               </div>
             ) : showHero ? (
               <div className="flex h-[52vh] flex-col items-center justify-center gap-3 text-center">
-                <span className="text-5xl">{copy.app.brand}</span>
-                <h2 className="text-xl font-semibold text-zinc-100">
+                <MapleMark className="h-10 w-10 text-accent" />
+                <h2 className="text-xl font-semibold text-white">
                   {copy.playground.emptyTitle}
                 </h2>
-                <p className="max-w-sm text-xs leading-relaxed text-zinc-500">
+                <p className="max-w-sm text-sm leading-relaxed text-mut">
                   {copy.playground.emptySubtitle}
                 </p>
               </div>
@@ -242,14 +243,14 @@ export function PlaygroundPage() {
               ))
             )}
             {showFailedBar && projection.error ? (
-              <div className="flex items-center gap-3 rounded-lg border border-red-900/70 bg-red-950/40 px-3 py-2 text-xs text-red-300">
+              <div className="flex items-center gap-3 rounded-md border border-neg/30 bg-pill-neg px-3 py-2 text-sm text-neg">
                 <span className="flex-1">
                   {copy.playground.failedBar(projection.error.code, projection.error.message)}
                 </span>
                 {projection.error.retryable && lastInputRef.current ? (
                   <Button
                     variant="ghost"
-                    className="!px-2 !py-1 !text-xs"
+                    className="!h-7 !px-3 !text-xs"
                     onClick={() => void send(lastInputRef.current!)}
                   >
                     {copy.playground.retry}
@@ -258,7 +259,7 @@ export function PlaygroundPage() {
               </div>
             ) : null}
             {showCancelledBar ? (
-              <div className="rounded-lg border border-amber-900/60 bg-amber-950/30 px-3 py-2 text-xs text-amber-300">
+              <div className="rounded-md border border-warn/30 bg-pill-warn px-3 py-2 text-sm text-warn">
                 {copy.playground.cancelledBar}
               </div>
             ) : null}
@@ -273,7 +274,7 @@ export function PlaygroundPage() {
               const el = scrollRef.current;
               if (el) el.scrollTop = el.scrollHeight;
             }}
-            className="absolute bottom-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-surface-border bg-surface-raised text-xs text-zinc-300 shadow-card transition-colors hover:text-zinc-100"
+            className="absolute bottom-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-line bg-raised text-ink shadow-pop transition-colors hover:text-white"
             aria-label="scroll to bottom"
           >
             ↓
@@ -282,9 +283,9 @@ export function PlaygroundPage() {
       </div>
 
       {/* composer */}
-      <div className="shrink-0 px-4 pb-4">
+      <div className="shrink-0 px-4 pb-5 sm:px-6">
         <form
-          className="mx-auto max-w-3xl rounded-2xl border border-surface-border bg-surface-raised p-3 shadow-card transition-colors focus-within:border-accent/60"
+          className="mx-auto max-w-3xl rounded-lg border border-line bg-panel p-3 shadow-pop transition-colors focus-within:border-accent"
           onSubmit={(e) => {
             e.preventDefault();
             void submit();
@@ -309,7 +310,7 @@ export function PlaygroundPage() {
                 void submit();
               }
             }}
-            className="max-h-48 w-full resize-none bg-transparent px-1 text-sm leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
+            className="max-h-48 w-full resize-none bg-transparent px-1 text-base leading-relaxed text-ink placeholder:text-mut focus:outline-none"
           />
           <div className="mt-2 flex items-center gap-2 px-1">
             {/* 模型选择 chip（nanobot 形态）：向上弹层列出可用模型 */}
@@ -318,20 +319,20 @@ export function PlaygroundPage() {
                 type="button"
                 title={copy.playground.modelLabel}
                 onClick={() => setModelOpen((v) => !v)}
-                className="flex h-7 items-center gap-1.5 rounded-full border border-surface-border bg-surface px-2.5 text-[11px] text-zinc-400 transition-colors hover:border-accent/50 hover:text-amber-200"
+                className="flex h-7 items-center gap-1.5 rounded-full border border-line bg-ground px-2.5 text-xs text-mut transition-colors hover:border-control hover:text-ink"
               >
-                <span className="text-[10px]">🍁</span>
+                <MapleMark className="h-3 w-3 text-accent" />
                 <span className="max-w-28 truncate">{effectiveModel ?? copy.playground.modelLabel}</span>
               </button>
               {modelOpen ? (
                 <>
                   <div className="fixed inset-0 z-20" onClick={() => setModelOpen(false)} />
-                  <div className="absolute bottom-9 left-0 z-30 w-56 animate-fade-up overflow-hidden rounded-xl border border-surface-border bg-surface-raised py-1 shadow-pop">
-                    <p className="px-3 pb-1 pt-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-600">
+                  <div className="absolute bottom-9 left-0 z-30 w-64 animate-fade-up overflow-hidden rounded-lg border border-line bg-raised py-1 shadow-pop">
+                    <p className="px-3 pb-1 pt-1.5 text-xs text-mut">
                       {copy.playground.modelLabel}
                     </p>
                     {models.length === 0 ? (
-                      <p className="px-3 py-2 text-xs text-zinc-600">{copy.state.empty}</p>
+                      <p className="px-3 py-2 text-sm text-mut">{copy.state.empty}</p>
                     ) : (
                       models.map((m) => (
                         <button
@@ -341,15 +342,12 @@ export function PlaygroundPage() {
                             setSelectedModel(m.id);
                             setModelOpen(false);
                           }}
-                          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-surface"
+                          className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-ground ${
+                            m.id === effectiveModel ? "sel-left text-white" : "text-ink"
+                          }`}
                         >
-                          <span className="flex-1 truncate font-mono">{m.id}</span>
-                          {m.tools ? (
-                            <span className="text-[10px] text-zinc-600">tools</span>
-                          ) : null}
-                          {m.id === effectiveModel ? (
-                            <span className="text-amber-300">✓</span>
-                          ) : null}
+                          <span className="num flex-1 truncate">{m.id}</span>
+                          {m.tools ? <span className="text-2xs text-mut">tools</span> : null}
                         </button>
                       ))
                     )}
@@ -358,18 +356,18 @@ export function PlaygroundPage() {
               ) : null}
             </div>
             {sending ? (
-              <span className="flex items-center gap-2 text-[11px] text-zinc-500">
+              <span className="flex items-center gap-2 text-xs text-mut">
                 <Spinner className="!h-3 !w-3" />
                 {copy.playground.sendSending}
               </span>
             ) : usage ? (
-              <Badge tone="success" className="!text-[10px]">
-                {copy.playground.usageBar(usage.input_tokens, usage.output_tokens)}
+              <Badge tone="neutral">
+                <span className="num">{copy.playground.usageBar(usage.input_tokens, usage.output_tokens)}</span>
               </Badge>
             ) : null}
             <span className="flex-1" />
             {sending ? (
-              <Button variant="danger" className="!px-3 !py-1.5 !text-xs" onClick={() => void cancel()}>
+              <Button variant="danger" className="!h-7 !px-3 !text-xs" onClick={() => void cancel()}>
                 ■ {copy.playground.stop}
               </Button>
             ) : (

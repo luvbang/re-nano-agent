@@ -12,6 +12,14 @@ const queryClient = new QueryClient({
   },
 });
 
+// ?demo=1 直达离线演示模式（等价于登录页「进入离线演示模式」）：
+// 供 e2e / 设计检查工具免登录进入全部页面，仅写 sessionStorage，不触后端
+if (new URLSearchParams(window.location.search).has("demo")) {
+  sessionStorage.setItem("agentd.clientMode", "demo");
+  sessionStorage.setItem("agentd.adminKey", "agd_demo");
+  sessionStorage.setItem("agentd.playgroundKey", "pk_demo_playground");
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
