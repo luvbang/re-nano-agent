@@ -70,6 +70,8 @@ def test_dns_failure_rejected() -> None:
 
 
 # ---------- web_fetch 工具（validator 注入：*.example 视为公网，其余走真实判定） ----------
+# 注：v0.2 起 web_fetch 把校验后的 IP 钉进连接层，respx 在钉点之后拦截，
+#    因此 mock 的 URL host 是 fake_validator 返回的 93.184.216.34
 
 
 def fake_validator(url: str) -> list[str]:
@@ -85,7 +87,7 @@ def web_tool() -> WebFetchTool:
 
 @respx.mock
 async def test_web_fetch_happy_path() -> None:
-    respx.get("https://ok.example/page").mock(
+    respx.get("https://93.184.216.34/page").mock(
         return_value=httpx.Response(200, text="页面内容", headers={"content-type": "text/html"})
     )
     tool = web_tool()
@@ -96,7 +98,7 @@ async def test_web_fetch_happy_path() -> None:
 
 @respx.mock
 async def test_web_fetch_redirect_to_private_rejected() -> None:
-    respx.get("https://ok.example/redir").mock(
+    respx.get("https://93.184.216.34/redir").mock(
         return_value=httpx.Response(302, headers={"location": "http://192.168.0.1/admin"})
     )
     tool = web_tool()
@@ -107,10 +109,10 @@ async def test_web_fetch_redirect_to_private_rejected() -> None:
 
 @respx.mock
 async def test_web_fetch_follows_public_redirects() -> None:
-    respx.get("https://ok.example/a").mock(
+    respx.get("https://93.184.216.34/a").mock(
         return_value=httpx.Response(302, headers={"location": "https://ok.example/b"})
     )
-    respx.get("https://ok.example/b").mock(
+    respx.get("https://93.184.216.34/b").mock(
         return_value=httpx.Response(200, text="final", headers={"content-type": "text/plain"})
     )
     tool = web_tool()
@@ -125,7 +127,7 @@ async def test_web_fetch_non_text_content_rejected() -> None:
         content=b"\x00\x01",
         headers={"content-type": "application/octet-stream"},
     )
-    respx.get("https://ok.example/bin").mock(return_value=binary)
+    respx.get("https://93.184.216.34/bin").mock(return_value=binary)
     tool = web_tool()
     result = await tool.execute({"url": "https://ok.example/bin"})
     assert result.is_error and "Content-Type" in result.content
@@ -133,7 +135,7 @@ async def test_web_fetch_non_text_content_rejected() -> None:
 
 @respx.mock
 async def test_web_fetch_error_status_is_error_result() -> None:
-    respx.get("https://ok.example/404").mock(return_value=httpx.Response(404))
+    respx.get("https://93.184.216.34/404").mock(return_value=httpx.Response(404))
     tool = web_tool()
     result = await tool.execute({"url": "https://ok.example/404"})
     assert result.is_error and "404" in result.content
