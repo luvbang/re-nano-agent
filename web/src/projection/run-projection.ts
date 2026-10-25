@@ -16,6 +16,8 @@ export interface ToolCallView {
   args: Record<string, unknown>;
   status: "running" | "ok" | "error";
   duration_ms: number | null;
+  /** 工具输出预览（v0.2-4）：SSE tool.completed 携带 / 历史由 role=tool 消息补齐 */
+  result: string;
 }
 
 export type ChatItem =
@@ -106,6 +108,7 @@ export function applyEvent(state: RunProjection, ev: RunStreamEvent): RunProject
               args: ev.args,
               status: "running",
               duration_ms: null,
+              result: "",
             },
           ],
         })),
@@ -117,7 +120,7 @@ export function applyEvent(state: RunProjection, ev: RunStreamEvent): RunProject
           ...a,
           tools: a.tools.map((t) =>
             t.tool_call_id === ev.tool_call_id
-              ? { ...t, status: ev.status, duration_ms: ev.duration_ms }
+              ? { ...t, status: ev.status, duration_ms: ev.duration_ms, result: ev.result ?? "" }
               : t,
           ),
         })),
@@ -163,6 +166,7 @@ export function historyToItems(messages: SessionMessage[]): ChatItem[] {
           args: safeParse(c.function.arguments),
           status: "ok",
           duration_ms: null,
+          result: "",
         };
       });
       items.push({
@@ -178,6 +182,7 @@ export function historyToItems(messages: SessionMessage[]): ChatItem[] {
       const last = items[items.length - 1];
       if (last && last.kind === "assistant") {
         const name = toolNameById.get(m.tool_call_id) ?? "tool";
+        const result = m.content ?? "";
         const exists = last.tools.some((t) => t.tool_call_id === m.tool_call_id);
         if (!exists) {
           items[items.length - 1] = {
@@ -190,8 +195,17 @@ export function historyToItems(messages: SessionMessage[]): ChatItem[] {
                 args: {},
                 status: "ok",
                 duration_ms: null,
+                result,
               },
             ],
+          };
+        } else {
+          // 历史回放（无 SSE 事件）时把结果补进已建的工具卡
+          items[items.length - 1] = {
+            ...last,
+            tools: last.tools.map((t) =>
+              t.tool_call_id === m.tool_call_id && !t.result ? { ...t, result } : t,
+            ),
           };
         }
       }

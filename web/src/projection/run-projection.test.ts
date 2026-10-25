@@ -67,7 +67,7 @@ describe("run-projection 工具回路", () => {
       START,
       { type: "message.delta", seq: 2, delta: "我查一下时间" },
       { type: "tool.started", seq: 3, tool_call_id: "t_1", name: "get_time", args: {} },
-      { type: "tool.completed", seq: 4, tool_call_id: "t_1", name: "get_time", status: "ok", duration_ms: 12 },
+      { type: "tool.completed", seq: 4, tool_call_id: "t_1", name: "get_time", status: "ok", duration_ms: 12, result: "utc=10:00" },
       { type: "message.delta", seq: 5, delta: "现在是 10 点" },
       {
         type: "message.completed",
@@ -84,7 +84,7 @@ describe("run-projection 工具回路", () => {
     if (first?.kind !== "assistant") throw new Error("unreachable");
     expect(first.text).toBe("我查一下时间");
     expect(first.tools).toEqual([
-      { tool_call_id: "t_1", name: "get_time", args: {}, status: "ok", duration_ms: 12 },
+      { tool_call_id: "t_1", name: "get_time", args: {}, status: "ok", duration_ms: 12, result: "utc=10:00" },
     ]);
     const second = state.items[1];
     expect(second?.kind === "assistant" && second.text).toBe("现在是 10 点");
@@ -94,7 +94,7 @@ describe("run-projection 工具回路", () => {
     const state = run([
       START,
       { type: "tool.started", seq: 2, tool_call_id: "t_9", name: "read_file", args: { path: "../x" } },
-      { type: "tool.completed", seq: 3, tool_call_id: "t_9", name: "read_file", status: "error", duration_ms: 3 },
+      { type: "tool.completed", seq: 3, tool_call_id: "t_9", name: "read_file", status: "error", duration_ms: 3, result: "路径越界：../x" },
       {
         type: "message.completed",
         seq: 4,
@@ -158,6 +158,8 @@ describe("historyToItems 历史重建", () => {
     const withTools = items[1];
     if (withTools?.kind !== "assistant") throw new Error("unreachable");
     expect(withTools.tools[0]?.name).toBe("get_time");
+    // v0.2-4：历史回放时 role=tool 消息补齐工具卡结果预览
+    expect(withTools.tools[0]?.result).toBe("utc=…");
     expect(items[2]?.kind === "assistant" && items[2].text).toContain("UTC");
   });
 });

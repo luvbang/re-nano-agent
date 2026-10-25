@@ -332,6 +332,9 @@ export function createDemoClient() {
           name: toolName,
           status: "ok",
           duration_ms: 418,
+          result: useTime
+            ? `utc=${new Date().toISOString()} local=${new Date().toLocaleString("zh-CN")}`
+            : `已写入 workspace/demo.txt（${run.input.length} 字符）`,
         });
         const tail = useTime
           ? `查询完成。当前时间 ${new Date().toLocaleString("zh-CN")}。这是离线演示数据。`

@@ -137,6 +137,8 @@ export type RunStreamEvent =
       name: string;
       status: "ok" | "error";
       duration_ms: number;
+      /** v0.2-4：工具输出预览（后端封顶 2000 字符）；旧事件可能缺省 */
+      result?: string;
     }
   | { type: "message.completed"; seq: number; content: string; usage: Usage }
   | { type: "run.completed"; seq: number; usage: Usage }
