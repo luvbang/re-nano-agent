@@ -218,6 +218,59 @@
     "title": "HealthResponse",
     "type": "object"
    },
+   "MemoryCreate": {
+    "properties": {
+     "content": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Content",
+      "type": "string"
+     }
+    },
+    "required": [
+     "content"
+    ],
+    "title": "MemoryCreate",
+    "type": "object"
+   },
+   "MemoryOut": {
+    "properties": {
+     "content": {
+      "title": "Content",
+      "type": "string"
+     },
+     "created_at": {
+      "title": "Created At",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "last_seen_at": {
+      "title": "Last Seen At",
+      "type": "string"
+     },
+     "score": {
+      "title": "Score",
+      "type": "number"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "content",
+     "status",
+     "score",
+     "created_at",
+     "last_seen_at"
+    ],
+    "title": "MemoryOut",
+    "type": "object"
+   },
    "MessageOut": {
     "properties": {
      "content": {
@@ -1211,6 +1264,236 @@
     "summary": "系统状态（管理员）：run/会话/用量/DB 体量",
     "tags": [
      "platform"
+    ]
+   }
+  },
+  "/v1/memories": {
+   "get": {
+    "operationId": "list_memories_v1_memories_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "status",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "pattern": "^(active|archived)$",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Status"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 100,
+       "maximum": 200,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "header",
+      "name": "authorization",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/MemoryOut"
+         },
+         "title": "Response List Memories V1 Memories Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "记忆列表（最近创建优先，可按状态过滤）",
+    "tags": [
+     "memories"
+    ]
+   },
+   "post": {
+    "operationId": "create_memory_v1_memories_post",
+    "parameters": [
+     {
+      "in": "header",
+      "name": "authorization",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MemoryCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MemoryOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    },
+    "summary": "写入记忆（同内容去重：已存在则刷新 last_seen）",
+    "tags": [
+     "memories"
+    ]
+   }
+  },
+  "/v1/memories/{memory_id}": {
+   "delete": {
+    "operationId": "archive_memory_v1_memories__memory_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "memory_id",
+      "required": true,
+      "schema": {
+       "title": "Memory Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "header",
+      "name": "authorization",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "归档记忆（跨 project 一律 404，不泄漏存在性）",
+    "tags": [
+     "memories"
     ]
    }
   },

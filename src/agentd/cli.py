@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sys
 from collections.abc import AsyncIterator, Callable
 
@@ -118,6 +119,30 @@ def _cmd_version(_: argparse.Namespace) -> int:
         f"agentd {APP_VERSION} env={settings.env} db={settings.db_path} "
         f"workspace={settings.workspace_root}"
     )
+    return 0
+
+
+async def _cmd_dream(args: argparse.Namespace) -> int:
+    """记忆整理（v0.2-3 Dream，规则版）：同内容去重 + 超陈旧阈值归档。
+
+    建议低峰期 cron 执行：uv run agentd dream [--project <id>]
+    """
+    settings = get_settings()
+    configure_logging(settings.log_level, json_output=False)
+    db = Database(
+        settings.db_path or settings.data_dir / "agentd.db",
+        busy_timeout_ms=settings.sqlite_busy_timeout_ms,
+    )
+    db.migrate()
+    from agentd.services.memory import MemoryService
+
+    service = MemoryService(
+        db,
+        max_active=settings.memory_max_active,
+        stale_days=settings.memory_stale_days,
+    )
+    report = await service.dream(args.project)
+    print(json.dumps(report.as_dict(), ensure_ascii=False))
     return 0
 
 
@@ -290,6 +315,12 @@ def build_parser() -> argparse.ArgumentParser:
     purge.add_argument("--project", required=True, help="project id（p_ 开头）")
     purge.add_argument("--yes", action="store_true", help="确认执行（不加则只打印计划）")
     purge.set_defaults(func=lambda args: asyncio.run(_cmd_purge(args)))
+
+    dream = sub.add_parser(
+        "dream", help="记忆整理（规则版：同内容去重 + 超陈旧阈值归档）"
+    )
+    dream.add_argument("--project", default=None, help="只整理该 project（默认全部）")
+    dream.set_defaults(func=lambda args: asyncio.run(_cmd_dream(args)))
 
     sub.add_parser("version", help="打印版本与配置").set_defaults(func=_cmd_version)
     return parser

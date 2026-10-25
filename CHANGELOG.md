@@ -6,6 +6,13 @@
 
 ### Added（v0.2 进行中）
 
+- **记忆与自动整理**（retro v0.2-3）：`memories` 表（迁移 003，project 作用域）+
+  `MemoryService`——写入精确去重（bump last_seen）、注入按 score/last_seen 预算内
+  并入 system（注入即确认刷新 last_seen）、run 成功后的旁路自动提取
+  （`AGENTD_MEMORY_EXTRACT_ENABLED`，默认关；失败退化为不产记忆，永不影响 run）、
+  `agentd dream` 规则版整理（同内容去重 + 超陈旧阈值归档）；`/v1/memories`
+  GET/POST/DELETE（归档幂等，跨 project 404），审计记 memory.created/archived
+
 - **多 provider + 故障自动切换**（retro v0.2-2）：`AGENTD_LLM_PROVIDER` 支持
   `openai`（chat.completions）/ `responses`（OpenAI Responses API）/ `anthropic`
   （Messages API 原生，x-api-key + SSE text/tool_use 块映射），`AGENTD_LLM_FALLBACKS`

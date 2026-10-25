@@ -23,7 +23,7 @@ from agentd.log import configure_logging
 from agentd.providers.base import Provider
 from agentd.services.run_manager import RunManager
 from agentd.storage.db import Database
-from agentd.storage.repositories import RunRepository
+from agentd.storage.repositories import AuditRepository, RunRepository
 
 logger = logging.getLogger(__name__)
 
@@ -65,10 +65,18 @@ async def _build_run_manager(
         for tool in await load_mcp_tools(mcp_config):
             tools.register(tool)  # 同名冲突时让位给内置（register 抛错则跳过）
     from agentd.runtime.compaction import HistoryCompactor
+    from agentd.services.memory import MemoryService
     from agentd.services.usage_service import UsageService, parse_price_table
 
     context_builder = ContextBuilder(
         context_window=settings.llm_context_window, max_output=settings.llm_max_output
+    )
+    memory = MemoryService(
+        db,
+        budget_tokens=settings.memory_budget_tokens,
+        max_active=settings.memory_max_active,
+        stale_days=settings.memory_stale_days,
+        audit=AuditRepository(db),
     )
     return RunManager(
         db,
@@ -77,6 +85,8 @@ async def _build_run_manager(
         model=model,
         usage_service=UsageService(db, parse_price_table(settings.llm_price_table)),
         compactor=HistoryCompactor(db, provider, context_builder=context_builder),
+        memory=memory,
+        memory_extract_enabled=settings.memory_extract_enabled,
         metrics=metrics,
         runner_kwargs={
             "max_iterations": settings.run_max_iterations,
@@ -159,6 +169,7 @@ def create_app(settings: Settings | None = None, *, provider: Provider | None = 
 
     from agentd.api.auth import enforce_rate_limit
     from agentd.api.routes.admin import router as admin_router
+    from agentd.api.routes.memories import router as memories_router
     from agentd.api.routes.platform import router as platform_router
     from agentd.api.routes.runs import router as runs_router
     from agentd.api.routes.sessions import router as sessions_router
@@ -167,6 +178,7 @@ def create_app(settings: Settings | None = None, *, provider: Provider | None = 
     app.include_router(admin_router)
     app.include_router(sessions_router, dependencies=throttled)
     app.include_router(runs_router, dependencies=throttled)
+    app.include_router(memories_router, dependencies=throttled)
     app.include_router(platform_router)
     _mount_console(app, settings)
     return app

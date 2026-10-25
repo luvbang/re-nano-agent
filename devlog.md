@@ -338,3 +338,33 @@
 
 **下一步（v0.2-3，按 retro 优先级）**
 - 记忆与自动整理（nanobot Memory/Dream 思路裁剪）
+
+---
+
+## 2026-10-25（v0.2-3：记忆与自动整理）
+
+**完成**
+- 迁移 003_memories：project 作用域记忆表（content/score/status/last_seen_at，索引按活跃+分数）
+- MemoryRepository：create/find_same_content/list_active/list_recent/list_stale/touch/archive/project_ids
+- MemoryService：写入精确去重（同内容 bump last_seen）、prompt_block 预算注入
+  （score/last_seen 排序、注入即确认刷新、无记忆不出空段）、extract_from_dialog
+  （provider 旁路提取事实，≤5 条/≤200 字，失败退化为不产记忆——与压缩的降级哲学一致）、
+  dream 规则版整理（同内容去重 + 超陈旧阈值归档，报告可断言）
+- Runner 增 memory_block 参数：并入 system 消息、随预算组装参与裁剪；
+  chat_service 按 project 注入；RunManager 成功 run 后 fire-and-forget 提取
+  （bg 任务集 + shutdown 等待收尾，提取失败绝不影响 run）
+- API /v1/memories GET/POST/DELETE（project 作用域、限流、归档幂等、跨 project 404、
+  审计 memory.created/archived）；CLI `agentd dream [--project]`；OpenAPI 快照重生成；
+  api-contract.md 增 §2.2 记忆端点（补上契约文档只有运维段的欠账起点）
+
+**证据**
+- ruff / mypy（104 files）/ pytest **232 passed, 3 skipped**（新增 9 service + 5 API/e2e）
+- 提取旁路 e2e：run 完成 → 轮询 /v1/memories 断言两条事实入库、run 结果不受影响
+
+**技术债（只登记不修）**
+- Dream 为规则版（同内容去重 + 陈旧归档）；LLM 驱动的语义合并/重要性评分留 v0.2 后续
+- 记忆注入为整段附加（无逐条相关性检索）；预算超限时只裁条数不重排
+- 提取 prompt 为中文硬编码（跟随文案中文一档约定；i18n 时随控制台一起做）
+
+**下一步（v0.2-4，按 retro 优先级）**
+- 控制台完善（Markdown 渲染 / 文件预览 / 用量看板增强 / 移动端 / Playwright 冒烟进 CI）

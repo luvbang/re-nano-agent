@@ -63,6 +63,19 @@ class MessagePage(BaseModel):
     has_more: bool
 
 
+class MemoryCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=2000)
+
+
+class MemoryOut(BaseModel):
+    id: str
+    content: str
+    status: str
+    score: float
+    created_at: str
+    last_seen_at: str
+
+
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
 

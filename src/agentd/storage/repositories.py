@@ -419,3 +419,76 @@ class UsageRepository(Repository):
             (project_id,),
         )
         return row or {"n": 0, "input_tokens": 0, "output_tokens": 0}
+
+
+class MemoryRepository(Repository):
+    """长期记忆（v0.2-3）：project 作用域，active 注入上下文，archived 不再注入。"""
+
+    async def create(
+        self,
+        *,
+        project_id: str,
+        content: str,
+        source_session_id: str | None = None,
+        source_run_id: str | None = None,
+        score: float = 1.0,
+    ) -> dict[str, Any]:
+        memory_id = new_id("mem")
+        await self.db.execute(
+            "INSERT INTO memories (id, project_id, content, source_session_id,"
+            " source_run_id, score) VALUES (?, ?, ?, ?, ?, ?)",
+            (memory_id, project_id, content, source_session_id, source_run_id, score),
+        )
+        row = await self.get(memory_id)
+        assert row is not None
+        return row
+
+    async def get(self, memory_id: str) -> dict[str, Any] | None:
+        return await self.db.fetch_one("SELECT * FROM memories WHERE id = ?", (memory_id,))
+
+    async def find_same_content(self, project_id: str, content: str) -> dict[str, Any] | None:
+        return await self.db.fetch_one(
+            "SELECT * FROM memories WHERE project_id = ? AND content = ? AND status = 'active'",
+            (project_id, content),
+        )
+
+    async def project_ids(self) -> list[str]:
+        """有记忆的 project（Dream 只需扫描这些）。"""
+        rows = await self.db.fetch_all(
+            "SELECT DISTINCT project_id FROM memories ORDER BY project_id"
+        )
+        return [str(r["project_id"]) for r in rows]
+
+    async def list_active(self, project_id: str, *, limit: int = 200) -> list[dict[str, Any]]:
+        return await self.db.fetch_all(
+            "SELECT * FROM memories WHERE project_id = ? AND status = 'active'"
+            " ORDER BY score DESC, last_seen_at DESC LIMIT ?",
+            (project_id, limit),
+        )
+
+    async def list_recent(self, project_id: str, *, limit: int = 100) -> list[dict[str, Any]]:
+        return await self.db.fetch_all(
+            "SELECT * FROM memories WHERE project_id = ? ORDER BY created_at DESC LIMIT ?",
+            (project_id, limit),
+        )
+
+    async def list_stale(
+        self, project_id: str, *, older_than_days: int, limit: int = 200
+    ) -> list[dict[str, Any]]:
+        return await self.db.fetch_all(
+            "SELECT * FROM memories WHERE project_id = ? AND status = 'active'"
+            " AND last_seen_at < datetime('now', ?) LIMIT ?",
+            (project_id, f"-{older_than_days} days", limit),
+        )
+
+    async def touch(self, memory_id: str) -> None:
+        await self.db.execute(
+            "UPDATE memories SET last_seen_at = datetime('now') WHERE id = ?", (memory_id,)
+        )
+
+    async def archive(self, memory_id: str) -> None:
+        await self.db.execute(
+            "UPDATE memories SET status = 'archived', updated_at = datetime('now')"
+            " WHERE id = ?",
+            (memory_id,),
+        )

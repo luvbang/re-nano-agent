@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     anthropic_base_url: str = "https://api.anthropic.com"
     anthropic_model: str = "claude-sonnet-4-5"
 
+    # 长期记忆（v0.2-3）：注入按预算取 active；提取为 run 成功后的异步旁路
+    memory_extract_enabled: bool = False
+    memory_budget_tokens: int = Field(default=512, ge=64)
+    memory_max_active: int = Field(default=50, ge=1)
+    memory_stale_days: int = Field(default=90, ge=1)
+
     # 运行时上限（M1）
     run_max_iterations: int = Field(default=8, ge=1)
     run_timeout_s: float = Field(default=600.0, gt=0)

@@ -32,6 +32,7 @@ from agentd.runtime.events import (
     ToolStarted,
 )
 from agentd.services.chat_service import ChatService
+from agentd.services.memory import MemoryService
 from agentd.services.usage_service import UsageService
 from agentd.storage.db import Database
 from agentd.storage.repositories import (
@@ -100,6 +101,14 @@ def serialize_event(event: RunEvent) -> tuple[str, dict[str, Any]]:
     return name, payload
 
 
+def _log_memory_task_done(task: asyncio.Task[Any]) -> None:
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:  # 防御：extract_from_dialog 内部已兜底，这里只兜最后一线
+        logger.warning("memory.extract_task_failed", extra={"error": str(exc)})
+
+
 @dataclass
 class ActiveRun:
     run_id: str
@@ -122,6 +131,8 @@ class RunManager:
         project_concurrency: int = 4,
         usage_service: UsageService | None = None,
         compactor: HistoryCompactor | None = None,
+        memory: MemoryService | None = None,
+        memory_extract_enabled: bool = False,
         metrics: Metrics | None = None,
     ) -> None:
         self.db = db
@@ -130,13 +141,18 @@ class RunManager:
         self.model = model
         self.project_concurrency = project_concurrency
         self.runner_kwargs = runner_kwargs or {}
-        self.service = ChatService(db, usage_service=usage_service, compactor=compactor)
+        self.service = ChatService(
+            db, usage_service=usage_service, compactor=compactor, memory=memory
+        )
         self.audit = AuditRepository(db)
+        self.memory = memory
+        self.memory_extract_enabled = memory_extract_enabled
         self.metrics = metrics
         self.events = RunEventRepository(db)
         self.runs = RunRepository(db)
         self._active: dict[str, ActiveRun] = {}
         self._session_locks: dict[str, asyncio.Lock] = {}
+        self._bg_tasks: set[asyncio.Task[Any]] = set()
         self._global_sem = asyncio.Semaphore(global_concurrency)
         self._project_sems: dict[str, asyncio.Semaphore] = {}
 
@@ -161,6 +177,9 @@ class RunManager:
             if row is not None and row["status"] not in RunRepository.TERMINAL_STATUSES:
                 await self.runs.finish(run_id, "cancelled", error={"code": "cancelled"})
         self._active.clear()
+        if self._bg_tasks:
+            # 等记忆提取等旁路任务收尾（不产生 run 状态，但不该被进程退出腰斩）
+            await asyncio.gather(*self._bg_tasks, return_exceptions=True)
 
     # ---------- 启动 ----------
 
@@ -204,6 +223,7 @@ class RunManager:
             project_id, asyncio.Semaphore(self.project_concurrency)
         )
         stream = None
+        reply_text = ""
         try:
             async with self._global_sem, project_sem:
                 stream = self.service.stream_run(
@@ -214,6 +234,8 @@ class RunManager:
                     runner_kwargs=self.runner_kwargs,
                 )
                 async for event in stream:
+                    if isinstance(event, MessageCompleted):
+                        reply_text = event.content
                     await self._emit(active, event, project_id=project_id)
         except asyncio.CancelledError:
             await self.runs.finish(run_id, "cancelled", error={"code": "cancelled"})
@@ -235,6 +257,24 @@ class RunManager:
                 {"error": {"code": "internal", "message": "run 执行异常", "retryable": False}},
                 persist=True,
             )
+        else:
+            # 记忆自动提取（旁路任务）：仅成功 run；提取失败绝不影响 run 结果
+            if self.memory is not None and self.memory_extract_enabled:
+                memory = self.memory
+                provider = self.provider
+                task = asyncio.create_task(
+                    memory.extract_from_dialog(
+                        project_id,
+                        session_id=session_id,
+                        run_id=run_id,
+                        user_input=user_input,
+                        assistant_reply=reply_text,
+                        provider=provider,
+                    )
+                )
+                self._bg_tasks.add(task)
+                task.add_done_callback(self._bg_tasks.discard)
+                task.add_done_callback(_log_memory_task_done)
         finally:
             if self.metrics is not None:
                 status_row = await self.runs.get(run_id)

@@ -81,6 +81,7 @@ class AgentRunner:
         run_id: str = "r_local",
         session_id: str = "s_local",
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
+        memory_block: str = "",
         max_iterations: int = 8,
         timeout_s: float = 600.0,
         on_message: Callable[[ChatMessage], Awaitable[None]] | None = None,
@@ -91,6 +92,7 @@ class AgentRunner:
         self.run_id = run_id
         self.session_id = session_id
         self.system_prompt = system_prompt
+        self.memory_block = memory_block
         self.max_iterations = max_iterations
         self.timeout_s = timeout_s
         self.on_message = on_message
@@ -104,12 +106,16 @@ class AgentRunner:
         on_message 钩子按发生顺序收到 user / assistant(含 tool_calls) / tool /
         最终 assistant 消息（system 可由配置重建，不走钩子）——供持久层落库。
         配置了 context_builder 时走预算组装（超限裁剪/截断，装不下则 RunFailed）。
+        长期记忆（memory_block 非空）并入 system 消息，随预算组装一起参与裁剪。
         """
         yield RunStarted(run_id=self.run_id, session_id=self.session_id)
+        system_prompt = self.system_prompt
+        if self.memory_block:
+            system_prompt = f"{system_prompt}\n\n{self.memory_block}"
         if self.context_builder is not None:
             try:
                 messages = self.context_builder.build(
-                    history, user_input, system_prompt=self.system_prompt
+                    history, user_input, system_prompt=system_prompt
                 )
             except ContextBudgetError as exc:
                 yield RunFailed(
@@ -118,7 +124,7 @@ class AgentRunner:
                 return
         else:
             messages = [
-                ChatMessage(role="system", content=self.system_prompt),
+                ChatMessage(role="system", content=system_prompt),
                 *history,
                 ChatMessage(role="user", content=user_input),
             ]

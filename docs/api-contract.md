@@ -43,6 +43,25 @@ GET /readyz
 
 `/healthz` 只表达进程存活（不碰 IO）；`/readyz` 检查 DB 可写可读，用于负载均衡摘流。
 
+### 2.2 长期记忆（v0.2-3 已实现；project 作用域，Bearer key 鉴权 + 限流）
+
+```http
+GET /v1/memories?status=active&limit=100
+200 [{"id":"mem_...","content":"...","status":"active","score":1.0,
+      "created_at":"...","last_seen_at":"..."}]
+
+POST /v1/memories
+201 {"id":"mem_...","content":"用户偏好深色主题","status":"active",...}    # 同内容去重（bump last_seen）
+400 {"error":{"code":"invalid_request",...}}                              # 空/超长内容
+
+DELETE /v1/memories/{id}
+204                                                                       # 归档（幂等；跨 project 一律 404）
+```
+
+注入语义：run 组装上下文时 active 记忆按 score/last_seen 排序、预算内并入
+system（见 docs/architecture.md §6.4 的记忆段）。整理语义：`agentd dream`
+做规则版去重与陈旧归档（LLM 语义合并留待后续）。
+
 ## 3. SSE 事件（对外契约）
 
 ```text

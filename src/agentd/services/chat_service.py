@@ -20,6 +20,7 @@ from agentd.providers.base import ChatMessage, Provider
 from agentd.runtime.compaction import HistoryCompactor
 from agentd.runtime.events import RunCompleted, RunEvent, RunFailed, ToolCompleted, ToolStarted
 from agentd.runtime.runner import AgentRunner
+from agentd.services.memory import MemoryService
 from agentd.services.usage_service import UsageService
 from agentd.storage.db import Database
 from agentd.storage.repositories import (
@@ -40,10 +41,12 @@ class ChatService:
         *,
         usage_service: UsageService | None = None,
         compactor: HistoryCompactor | None = None,
+        memory: MemoryService | None = None,
     ) -> None:
         self.db = db
         self.usage_service = usage_service
         self.compactor = compactor
+        self.memory = memory
         self.messages = MessageRepository(db)
         self.runs = RunRepository(db)
         self.sessions = SessionRepository(db)
@@ -109,11 +112,15 @@ class ChatService:
                 tool_call_id=message.get("tool_call_id"),
             )
 
+        memory_block = ""
+        if self.memory is not None:
+            memory_block = await self.memory.prompt_block(project_id)
         runner = AgentRunner(
             provider,
             tools=tools,
             run_id=str(run["id"]),
             session_id=session_id,
+            memory_block=memory_block,
             on_message=persist,
             **(runner_kwargs or {}),
         )
