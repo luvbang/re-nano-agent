@@ -99,12 +99,17 @@ async def list_messages(
         text = None
         if row["content_json"]:
             text = json.loads(row["content_json"]).get("text")
+        # assistant 的工具调用 wire 列表原样透出（控制台据此重建历史工具卡）
+        tool_calls = None
+        if row["tool_calls_json"]:
+            tool_calls = json.loads(row["tool_calls_json"])
         items.append(
             MessageOut(
                 id=str(row["id"]),
                 seq=int(row["seq"]),
                 role=str(row["role"]),
                 content=text,
+                tool_calls=tool_calls,
                 tool_call_id=row["tool_call_id"],
                 created_at=str(row["created_at"]),
             )

@@ -51,7 +51,12 @@ async def issue_key(client: AsyncClient) -> dict[str, str]:
         await client.post("/v1/admin/projects", json={"name": "p"}, headers=admin)
     ).json()
     key = (
-        await client.post("/v1/admin/keys", json={"project_id": project["id"]}, headers=admin)
+        await client.post(
+            "/v1/admin/keys",
+            # drive_run 以 20ms 间隔轮询，默认 60/min 会在慢机器上自我限流（429 混入计数）
+            json={"project_id": project["id"], "rate_limit_per_min": 10_000},
+            headers=admin,
+        )
     ).json()["key"]
     return {"Authorization": f"Bearer {key}"}
 

@@ -30,6 +30,9 @@ async def client(tmp_path: Path) -> AsyncIterator[AsyncClient]:
         log_level="WARNING",
         log_json=False,
         admin_api_key=ADMIN_KEY,
+        # 20 个 key × 20ms 轮询 ≈ 1000 req/s，必打空全局兜底桶（默认 240/min）；
+        # 本测试目标是并发调度下的 5xx，不是限流行为
+        ratelimit_global_per_min=1_000_000,
     )
     app = create_app(settings, provider=FakeChatProvider(turn_fn=demo_turn))
     async with (
@@ -48,7 +51,10 @@ async def setup_keys(client: AsyncClient, count: int) -> list[dict[str, str]]:
     for _ in range(count):
         key = (
             await client.post(
-                "/v1/admin/keys", json={"project_id": project["id"]}, headers=admin
+                "/v1/admin/keys",
+                # 20ms 间隔轮询远超默认 60/min；测试目标是并发下的 5xx，不是限流
+                json={"project_id": project["id"], "rate_limit_per_min": 10_000},
+                headers=admin,
             )
         ).json()["key"]
         headers_list.append({"Authorization": f"Bearer {key}"})

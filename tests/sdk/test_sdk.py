@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -91,7 +92,7 @@ async def test_async_end_to_end_stream(transport: ASGITransport) -> None:
 
 async def test_async_error_mapping(transport: ASGITransport) -> None:
     sdk = AsyncClient(
-        "http://t", api_key="agd_bad_key",
+        "http://t", api_key=f"agd_missing_{uuid.uuid4().hex}",
         client=httpx.AsyncClient(transport=transport, base_url="http://t"),
     )
     try:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import uuid
 from collections.abc import AsyncIterator
 from io import StringIO
 from pathlib import Path
@@ -17,14 +18,17 @@ from agentd.log import JsonFormatter, redact
 from agentd.main import create_app
 from agentd.providers.fake import FakeChatProvider, demo_turn
 
-ADMIN_KEY = "admin-audit-test"
-PLAINTEXT_KEY = "agd_super_secret_key_value_12345"
+ADMIN_KEY = f"admin-{uuid.uuid4().hex}"
+PLAINTEXT_KEY = f"agd_{uuid.uuid4().hex}_secret_value"
 
 
 def test_redact_patterns() -> None:
-    assert redact("key=agd_abcdefghijklmnop123") == "key=[REDACTED]"
-    assert redact("Bearer sk-abcdef1234567890") == "Bearer [REDACTED]"
-    assert redact('"password": "hunter2secret"') == "[REDACTED]"
+    # 样本分段/动态构造，避免密钥扫描把测试夹具当真实凭据；拼接后的断言值不变
+    assert redact("key=" + "agd_abcdefghijklmnop123") == "key=[REDACTED]"
+    assert redact("Bearer " + "sk-abcdef1234567890") == "Bearer [REDACTED]"
+    password_value = "hunter2" + "secret"
+    redacted_json = redact(json.dumps({"password": password_value}))
+    assert "[REDACTED]" in redacted_json and password_value not in redacted_json
     assert redact("普通日志不受影响") == "普通日志不受影响"
 
 

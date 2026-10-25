@@ -25,7 +25,7 @@ curl -s http://127.0.0.1:8000/readyz      # {"status":"ready","checks":{"db":"ok
 
 # 5) 控制台与离线体验（可选）
 uv run python scripts/serve_fake.py        # 浏览器打开 http://127.0.0.1:8000
-#    管理员 key = admin-local-demo（fake provider，无需真实模型 key）
+#    管理员 key 每次启动随机生成并打印在输出里（fake provider，无需真实模型 key）
 # 真实模型：.env 配 AGENTD_LLM_* 后 uv run python scripts/tasks.py dev
 ```
 

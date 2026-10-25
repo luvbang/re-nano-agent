@@ -51,7 +51,7 @@ class Database:
             conn.row_factory = sqlite3.Row
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA foreign_keys=ON")
-            conn.execute(f"PRAGMA busy_timeout={int(self.busy_timeout_ms)}")
+            # busy_timeout 由 connect(timeout=…) 设置（同一 busy handler），无需再发 PRAGMA
             conn.execute("PRAGMA synchronous=NORMAL")
             self._conn = conn
         return self._conn

@@ -192,6 +192,22 @@ async def test_tool_run_events_persisted(client: AsyncClient) -> None:
     assert tool_done["data"]["status"] == "ok"
 
 
+async def test_messages_expose_tool_calls_wire(client: AsyncClient) -> None:
+    """历史消息透出 tool_calls wire（控制台据此重建工具卡）。"""
+    session_id, headers = await setup_session(client)
+    created = await client.post(
+        f"/v1/sessions/{session_id}/runs", json={"input": "几点了？"}, headers=headers
+    )
+    await wait_terminal(client, created.json()["run_id"], headers)
+    page = await client.get(f"/v1/sessions/{session_id}/messages", headers=headers)
+    assert page.status_code == 200
+    items = page.json()["items"]
+    assistant_with_tools = next(m for m in items if m["tool_calls"])
+    call = assistant_with_tools["tool_calls"][0]
+    assert call["id"] and call["type"] == "function"
+    assert call["function"]["name"] == "get_time"
+
+
 async def test_cross_project_run_is_404(client: AsyncClient) -> None:
     session_id, headers = await setup_session(client)
     created = await client.post(

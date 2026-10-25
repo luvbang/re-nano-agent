@@ -3,11 +3,14 @@
 
     uv run python scripts/serve_fake.py [--port 8000]
 仅供开发与演示（Playground 行为是脚本化的）；生产请配 AGENTD_LLM_*。
+管理员 key 每次启动随机生成并打印（可用 AGENTD_ADMIN_API_KEY 固定）。
 """
 
 from __future__ import annotations
 
 import argparse
+import os
+import secrets
 from pathlib import Path
 
 import uvicorn
@@ -24,11 +27,13 @@ def main() -> None:
     args = parser.parse_args()
 
     dist = Path(__file__).resolve().parents[1] / "web" / "dist"
+    admin_key = os.environ.get("AGENTD_ADMIN_API_KEY") or ("agd_" + secrets.token_urlsafe(18))
+    print(f"[serve_fake] 管理员 key（本次启动有效）: {admin_key}")
     settings = Settings(
         env="dev",
         log_level="INFO",
         log_json=False,
-        admin_api_key="admin-local-demo",
+        admin_api_key=admin_key,
         static_dir=dist if (dist / "index.html").exists() else None,
     )
     app = create_app(settings, provider=FakeChatProvider(turn_fn=demo_turn))

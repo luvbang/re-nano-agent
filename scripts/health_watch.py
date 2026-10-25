@@ -13,7 +13,11 @@ from __future__ import annotations
 import argparse
 import contextlib
 import json
-import urllib.request
+import urllib.parse
+
+import httpx
+
+from agentd.security.ssrf import assert_public_url
 
 
 def check(base_url: str) -> tuple[bool, str]:
@@ -25,15 +29,27 @@ def check(base_url: str) -> tuple[bool, str]:
         return False, f"{type(exc).__name__}: {exc}"
 
 
-def notify(webhook: str | None, message: str) -> None:
+def notify(webhook: str | None, message: str, *, allow_private: bool = False) -> None:
     if not webhook:
         return
+    # 输入校验：仅接受 http(s) 且带主机的 URL；默认拒绝私网地址（防 SSRF 误配），
+    # 内网告警通道用 --allow-private 显式放行
+    parsed = urllib.parse.urlparse(webhook)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        print(f"webhook 已忽略（仅支持 http/https）: {webhook}")
+        return
+    if not allow_private:
+        try:
+            assert_public_url(webhook)
+        except Exception:
+            print("webhook 指向私网/保留地址已拦截（内网通道请加 --allow-private）")
+            return
     payload = json.dumps({"text": message}).encode("utf-8")
-    request = urllib.request.Request(
-        webhook, data=payload, headers={"Content-Type": "application/json"}
-    )
     with contextlib.suppress(Exception):
-        urllib.request.urlopen(request, timeout=5)  # 告警通道故障不阻塞本进程
+        # 告警通道故障不阻塞本进程；URL 已过 scheme/公网校验
+        httpx.post(
+            webhook, content=payload, headers={"Content-Type": "application/json"}, timeout=5
+        )
 
 
 def main() -> int:
@@ -42,6 +58,9 @@ def main() -> int:
     parser.add_argument("--interval", type=float, default=30)
     parser.add_argument("--fail-after", type=int, default=3)
     parser.add_argument("--webhook", default=None)
+    parser.add_argument(
+        "--allow-private", action="store_true", help="允许 webhook 指向私网/保留地址"
+    )
     parser.add_argument("--once", action="store_true", help="单次检查后退出")
     args = parser.parse_args()
 
@@ -58,7 +77,7 @@ def main() -> int:
             if consecutive >= args.fail_after:
                 message = f"[agentd] 健康检查连续 {consecutive} 次失败：{detail}"
                 print(message, flush=True)
-                notify(args.webhook, message)
+                notify(args.webhook, message, allow_private=args.allow_private)
                 return 1
         if args.once:
             return 0 if ok else 1

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from pathlib import Path
 
 import pytest
@@ -63,12 +64,13 @@ async def test_record_writes_cost_to_usage_and_run(tmp_path: Path) -> None:
 
 
 async def test_usage_endpoint_reports_cost_field(tmp_path: Path) -> None:
+    admin_key = f"admin-{uuid.uuid4().hex}"
     settings = Settings(
         env="test",
         data_dir=tmp_path,
         log_level="WARNING",
         log_json=False,
-        admin_api_key="admin-usage",
+        admin_api_key=admin_key,
         llm_price_table=PRICE,
     )
     app = create_app(settings, provider=FakeChatProvider(turn_fn=demo_turn))
@@ -76,7 +78,7 @@ async def test_usage_endpoint_reports_cost_field(tmp_path: Path) -> None:
         app.router.lifespan_context(app),
         AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client,
     ):
-        admin = {"Authorization": "Bearer admin-usage"}
+        admin = {"Authorization": f"Bearer {admin_key}"}
         project = (
             await client.post("/v1/admin/projects", json={"name": "p"}, headers=admin)
         ).json()

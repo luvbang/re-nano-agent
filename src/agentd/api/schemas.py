@@ -53,6 +53,7 @@ class MessageOut(BaseModel):
     seq: int
     role: str
     content: str | None
+    tool_calls: list[dict[str, Any]] | None = None
     tool_call_id: str | None
     created_at: str
 
