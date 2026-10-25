@@ -69,6 +69,13 @@ class ToolDefinition:
             },
         }
 
+    def to_anthropic(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "input_schema": self.parameters,
+        }
+
 
 # ---------- 流式事件 ----------
 
@@ -158,7 +165,12 @@ class Provider(ABC):
 
     返回 AsyncGenerator 而非 AsyncIterator：调用方（Runner）有提前关闭流的
     语义（aclose），这是取消语义的一部分，属于接口契约。
+
+    model：该 provider 的默认模型名（构造时确定）——run 记录、用量归属、
+    故障切换链的展示名都从这里取。
     """
+
+    model: str = "custom"
 
     @abstractmethod
     def chat(

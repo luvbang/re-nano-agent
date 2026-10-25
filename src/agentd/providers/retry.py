@@ -32,6 +32,7 @@ class RetryingProvider(Provider):
         sleep: SleepFn = asyncio.sleep,
     ) -> None:
         self.inner = inner
+        self.model = getattr(inner, "model", "custom")  # 透传：run 记录/链装配取模型名用
         self.max_retries = max_retries
         self.base_delay_s = base_delay_s
         self.max_delay_s = max_delay_s

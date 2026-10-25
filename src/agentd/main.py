@@ -36,8 +36,7 @@ async def _build_run_manager(
     metrics: Metrics | None = None,
 ) -> RunManager | None:
     """无模型配置时返回 None（/v1/runs 返回 502 model_error，健康检查不受影响）。"""
-    from agentd.providers.openai_compat import OpenAICompatProvider
-    from agentd.providers.retry import RetryingProvider
+    from agentd.providers.factory import build_provider
     from agentd.runtime.context import ContextBuilder
     from agentd.tools.builtin import BUILTIN_TOOLS
     from agentd.tools.filesystem import filesystem_tools
@@ -45,19 +44,9 @@ async def _build_run_manager(
     from agentd.tools.registry import ToolRegistry
 
     if provider is None:
-        api_key = settings.llm_api_key.get_secret_value()
-        if not api_key:
+        provider, model = build_provider(settings)
+        if provider is None:
             return None
-        provider = RetryingProvider(
-            OpenAICompatProvider(
-                api_key=api_key,
-                base_url=settings.llm_base_url,
-                model=settings.llm_model,
-                timeout_s=settings.llm_timeout_s,
-            ),
-            max_retries=settings.llm_retries,
-        )
-        model = settings.llm_model
     else:
         model = getattr(provider, "model", "custom")
     assert settings.workspace_root is not None

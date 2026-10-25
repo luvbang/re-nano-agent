@@ -17,6 +17,7 @@ from collections.abc import AsyncIterator, Callable
 from agentd.config import APP_VERSION, Settings, get_settings
 from agentd.log import configure_logging
 from agentd.providers.base import Provider
+from agentd.providers.factory import build_provider
 from agentd.providers.fake import FakeChatProvider, demo_turn
 from agentd.providers.openai_compat import OpenAICompatProvider
 from agentd.providers.retry import RetryingProvider
@@ -123,16 +124,20 @@ def _cmd_version(_: argparse.Namespace) -> int:
 def _build_chat_provider(args: argparse.Namespace, settings: Settings) -> Provider | None:
     if args.fake:
         return FakeChatProvider(turn_fn=demo_turn)
-    api_key = settings.llm_api_key.get_secret_value()
-    if not api_key:
-        return None
-    inner = OpenAICompatProvider(
-        api_key=api_key,
-        base_url=settings.llm_base_url,
-        model=args.model or settings.llm_model,
-        timeout_s=settings.llm_timeout_s,
-    )
-    return RetryingProvider(inner, max_retries=settings.llm_retries)
+    if args.model:
+        # CLI 显式 --model：保持旧行为，按 openai 兼容端点构建单 provider
+        api_key = settings.llm_api_key.get_secret_value()
+        if not api_key:
+            return None
+        inner = OpenAICompatProvider(
+            api_key=api_key,
+            base_url=settings.llm_base_url,
+            model=args.model,
+            timeout_s=settings.llm_timeout_s,
+        )
+        return RetryingProvider(inner, max_retries=settings.llm_retries)
+    provider, _ = build_provider(settings)
+    return provider
 
 
 TurnFn = Callable[[str], AsyncIterator[RunEvent]]

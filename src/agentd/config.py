@@ -40,7 +40,10 @@ class Settings(BaseSettings):
     sqlite_busy_timeout_ms: int = Field(default=5000, ge=0)
     request_id_header: str = "X-Request-Id"
 
-    # 模型接入（OpenAI-compatible 单 provider，M1）
+    # 模型接入（v0.2 多 provider：openai=chat.completions / responses=Responses API /
+    # anthropic=Messages API；fallbacks 逗号分隔，重试耗尽后整链切换）
+    llm_provider: str = Field(default="openai", pattern="^(openai|anthropic|responses)$")
+    llm_fallbacks: str = ""
     llm_api_key: SecretStr = SecretStr("")
     llm_base_url: str = "https://api.openai.com/v1"
     llm_model: str = "gpt-4o-mini"
@@ -48,6 +51,9 @@ class Settings(BaseSettings):
     llm_retries: int = Field(default=3, ge=0)
     llm_context_window: int = Field(default=128_000, ge=4_096)
     llm_max_output: int = Field(default=4_096, ge=256)
+    anthropic_api_key: SecretStr = SecretStr("")
+    anthropic_base_url: str = "https://api.anthropic.com"
+    anthropic_model: str = "claude-sonnet-4-5"
 
     # 运行时上限（M1）
     run_max_iterations: int = Field(default=8, ge=1)
