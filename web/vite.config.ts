@@ -1,17 +1,24 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
+// dev: Vite :5173，/v1、/healthz、/readyz 代理到本地后端（同源行为与生产一致）
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
     proxy: {
-      // 开发模式与生产同源行为一致：API 与 SSE 都打到后端
-      "/v1": { target: "http://127.0.0.1:8000", changeOrigin: false },
-      "/healthz": { target: "http://127.0.0.1:8000", changeOrigin: false },
-      "/readyz": { target: "http://127.0.0.1:8000", changeOrigin: false },
-      "/metrics": { target: "http://127.0.0.1:8000", changeOrigin: false },
+      "/v1": "http://127.0.0.1:8000",
+      "/healthz": "http://127.0.0.1:8000",
+      "/readyz": "http://127.0.0.1:8000",
     },
   },
-  build: { sourcemap: false },
+  build: {
+    outDir: "dist",
+    sourcemap: false,
+    chunkSizeWarningLimit: 280,
+  },
+  test: {
+    environment: "node",
+    include: ["src/**/*.test.ts"],
+  },
 });

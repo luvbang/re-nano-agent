@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-base text-ink antialiased;
+html,
+body,
+#root {
+  height: 100%;
+}
+
+::selection {
+  background: #065f46;
+  color: #ecfdf5;
+}
+
+/* 滚动条与深色控制台基调一致 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #262b36 transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #262b36;
+  border-radius: 4px;
 }

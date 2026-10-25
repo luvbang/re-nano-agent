@@ -1,88 +1,72 @@
-/** 手写 Tailwind 原语（v0.1 不引组件库；shadcn 化留给 v0.2 打磨）。 */
+/** 极简 UI 基元（shadcn 风格的仓库内组件，按需精简到按钮/卡片/输入/徽标）。 */
 
-import type { ReactNode } from "react";
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 
-export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return (
-    <div className={`rounded-lg border border-line bg-panel p-4 ${className}`}>{children}</div>
-  );
-}
+type ButtonVariant = "primary" | "ghost" | "danger";
 
 export function Button({
-  children,
-  onClick,
   variant = "primary",
-  disabled,
-  type = "button",
-}: {
-  children: ReactNode;
-  onClick?: () => void;
-  variant?: "primary" | "ghost" | "danger";
-  disabled?: boolean;
-  type?: "button" | "submit";
-}) {
-  const styles =
-    variant === "primary"
-      ? "bg-accent text-base hover:opacity-90"
-      : variant === "danger"
-        ? "border border-red-500/60 text-red-400 hover:bg-red-500/10"
-        : "border border-line text-dim hover:text-ink";
+  className = "",
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
+  const base =
+    "inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none";
+  const styles: Record<ButtonVariant, string> = {
+    primary: "bg-accent text-zinc-950 hover:bg-emerald-300",
+    ghost: "bg-transparent text-zinc-300 hover:bg-surface-raised border border-surface-border",
+    danger: "bg-red-900/60 text-red-200 hover:bg-red-800/70 border border-red-900",
+  };
+  return <button className={`${base} ${styles[variant]} ${className}`} {...props} />;
+}
+
+export function Card({ className = "", children }: { className?: string; children: ReactNode }) {
   return (
-    <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
-      className={`rounded px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${styles}`}
+    <div
+      className={`rounded-lg border border-surface-border bg-surface-raised shadow-sm ${className}`}
     >
       {children}
-    </button>
+    </div>
   );
 }
 
-export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
+export function Input({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
+      className={`w-full rounded-md border border-surface-border bg-surface px-3 py-2 text-sm
+        text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none ${className}`}
       {...props}
-      className={`w-full rounded border border-line bg-base px-3 py-1.5 text-sm text-ink placeholder:text-dim/60 focus:border-accent focus:outline-none ${props.className ?? ""}`}
     />
   );
 }
 
-export function Badge({ tone, children }: { tone: "ok" | "bad" | "muted"; children: ReactNode }) {
-  const cls =
-    tone === "ok"
-      ? "bg-emerald-500/15 text-emerald-400"
-      : tone === "bad"
-        ? "bg-red-500/15 text-red-400"
-        : "bg-line/40 text-dim";
-  return <span className={`rounded px-2 py-0.5 text-xs ${cls}`}>{children}</span>;
-}
-
-export function Spinner({ label = "加载中…" }: { label?: string }) {
+export function Badge({
+  children,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  tone?: "neutral" | "success" | "warn" | "error";
+}) {
+  const tones = {
+    neutral: "bg-zinc-800 text-zinc-300 border-zinc-700",
+    success: "bg-emerald-900/50 text-emerald-300 border-emerald-800",
+    warn: "bg-amber-900/50 text-amber-300 border-amber-800",
+    error: "bg-red-900/50 text-red-300 border-red-800",
+  } as const;
   return (
-    <div className="flex items-center gap-2 py-6 text-sm text-dim">
-      <span className="h-3 w-3 animate-spin rounded-full border-2 border-dim border-t-transparent" />
-      {label}
-    </div>
-  );
-}
-
-export function Empty({ children }: { children: ReactNode }) {
-  return (
-    <div className="rounded border border-dashed border-line py-8 text-center text-sm text-dim">
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${tones[tone]}`}
+    >
       {children}
-    </div>
+    </span>
   );
 }
 
-export function ErrorBox({ children }: { children: ReactNode }) {
+export function Spinner({ className = "" }: { className?: string }) {
   return (
-    <div className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-      {children}
-    </div>
+    <span
+      className={`inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-600 border-t-accent ${className}`}
+      role="status"
+      aria-label="loading"
+    />
   );
-}
-
-export function PageTitle({ children }: { children: ReactNode }) {
-  return <h1 className="mb-4 text-lg font-semibold text-ink">{children}</h1>;
 }

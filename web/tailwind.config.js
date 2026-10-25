@@ -4,12 +4,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        base: "oklch(0.16 0.01 260)",
-        panel: "oklch(0.21 0.01 260)",
-        line: "oklch(0.30 0.01 260)",
-        ink: "oklch(0.95 0.005 260)",
-        dim: "oklch(0.65 0.01 260)",
-        accent: "oklch(0.72 0.15 250)",
+        // 深色运维控制台基调（web-architecture.md §2：单人可维护的甜点位）
+        surface: {
+          DEFAULT: "#0f1115",
+          raised: "#171a21",
+          border: "#262b36",
+        },
+        accent: {
+          DEFAULT: "#34d399",
+          dim: "#065f46",
+        },
+      },
+      fontFamily: {
+        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],
       },
     },
   },
