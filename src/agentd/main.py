@@ -184,10 +184,33 @@ def create_app(settings: Settings | None = None, *, provider: Provider | None = 
 
 
 def _mount_console(app: FastAPI, settings: Settings) -> None:
-    """web/dist 存在则由本服务同源托管（API 路由已先注册，不会被遮蔽）。"""
+    """web/dist 存在则由本服务同源托管（API 路由已先注册，不会被遮蔽）。
+
+    SPA 回退：前端路由（/playground 等）没有实体文件，GET/HEAD 404 时回退
+    index.html；/v1 前缀除外——API 404 错误信封是契约行为（M0 DoD 有测试守护）。
+    """
     from pathlib import Path
 
     from fastapi.staticfiles import StaticFiles
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+    from starlette.responses import Response
+    from starlette.types import Scope
+
+    class SPAStaticFiles(StaticFiles):
+        async def get_response(self, path: str, scope: Scope) -> Response:
+            fallback = (
+                scope.get("method") in ("GET", "HEAD")
+                and not str(scope.get("path", "")).startswith("/v1")
+            )
+            try:
+                response = await super().get_response(path, scope)
+            except StarletteHTTPException as exc:
+                if fallback and exc.status_code == 404:
+                    return await super().get_response("./index.html", scope)
+                raise
+            if fallback and response.status_code == 404:
+                return await super().get_response("./index.html", scope)
+            return response
 
     if settings.static_dir is not None:
         # 显式指定：存在才挂，不回退（测试可用不存在路径表达"未构建"）
@@ -196,7 +219,7 @@ def _mount_console(app: FastAPI, settings: Settings) -> None:
         candidates = [Path.cwd() / "web" / "dist"]
     for candidate in candidates:
         if (candidate / "index.html").exists():
-            app.mount("/", StaticFiles(directory=str(candidate), html=True), name="console")
+            app.mount("/", SPAStaticFiles(directory=str(candidate), html=True), name="console")
             logger.info("console.mounted", extra={"path": str(candidate)})
             return
     logger.info("console.not_built")

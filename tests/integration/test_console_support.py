@@ -93,3 +93,29 @@ async def test_no_static_dir_is_fine(tmp_path: Path) -> None:
     ):
         root = await c.get("/")
         assert root.status_code == 404  # 显式指向不存在目录 = 不挂载，不影响 API
+
+
+async def test_spa_fallback_preserves_api_envelope(tmp_path: Path) -> None:
+    """前端路由回退 index.html；/v1 的 404 保持错误信封（不被 SPA 吞掉）。"""
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text("<html>console</html>", encoding="utf-8")
+    app = create_app(
+        make_settings(tmp_path, static_dir=dist),
+        provider=FakeChatProvider(turn_fn=demo_turn),
+    )
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c,
+    ):
+        page = await c.get("/playground")
+        assert page.status_code == 200
+        assert "console" in page.text
+
+        miss = await c.get("/v1/nope")
+        assert miss.status_code == 404
+        assert miss.json()["error"]["code"] == "not_found"
+
+        # 非 GET/HEAD 不回退（未知写路径保持 405/404 语义）
+        post = await c.post("/playground")
+        assert post.status_code in (404, 405)
