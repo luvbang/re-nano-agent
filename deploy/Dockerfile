@@ -9,6 +9,9 @@
 
 ARG PYTHON_IMAGE=python:3.12-slim-bookworm
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.16
+# 注意：用于 FROM 的 ARG 必须声明在第一个 FROM 之前（全局作用域）；
+# 夹在两个 stage 之间的 ARG 在 buildx 下解析为空（base name should not be blank）
+ARG NODE_IMAGE=node:22-alpine
 
 # ---------- 构建阶段：只装依赖 + 项目本体，不带走构建工具 ----------
 FROM ${UV_IMAGE} AS uv-bin
@@ -29,7 +32,6 @@ RUN uv venv /opt/venv \
     && uv pip install --python /opt/venv/bin/python --no-cache .
 
 # ---------- 控制台阶段：构建 web/dist（网络受限时用 NPM_REGISTRY 换源） ----------
-ARG NODE_IMAGE=node:22-alpine
 FROM ${NODE_IMAGE} AS console
 ARG NPM_REGISTRY=https://registry.npmjs.org/
 WORKDIR /web

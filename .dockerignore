@@ -13,3 +13,7 @@ examples
 .pytest_cache
 .github
 node_modules
+**/node_modules
+**/.mimosa
+web/.vite
+web/dist
