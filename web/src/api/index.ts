@@ -32,6 +32,8 @@ export interface ApiClient {
   listSessions(limit?: number): Promise<SessionInfo[]>;
   createSession(input: { title?: string; external_user_id?: string }): Promise<SessionInfo>;
   getSession(id: string): Promise<SessionInfo>;
+  renameSession(id: string, title: string): Promise<SessionInfo>;
+  deleteSession(id: string): Promise<void>;
   listMessages(
     sessionId: string,
     q?: { limit?: number; beforeSeq?: number },

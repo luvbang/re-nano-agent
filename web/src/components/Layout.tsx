@@ -53,14 +53,12 @@ function useSidebarWidth() {
 }
 
 function TopicRow({
-  id,
   title,
   active,
   onOpen,
   onRenamed,
   onDeleted,
 }: {
-  id: string;
   title: string | null;
   active: boolean;
   onOpen: () => void;
@@ -272,7 +270,6 @@ export function Layout({ children }: { children: ReactNode }) {
               {sessions.map((s) => (
                 <TopicRow
                   key={s.id}
-                  id={s.id}
                   title={s.title}
                   active={s.id === activeSession}
                   onOpen={() => navigate(`/playground?session=${s.id}`)}
