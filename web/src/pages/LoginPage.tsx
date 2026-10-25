@@ -43,9 +43,17 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface p-4">
-      <Card className="w-full max-w-sm p-6">
-        <h1 className="text-lg font-semibold">{copy.login.title}</h1>
-        <p className="mt-1 text-xs text-zinc-500">{copy.app.subtitle}</p>
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,158,11,0.06),transparent_55%)]" />
+      <Card className="relative w-full max-w-sm p-6 shadow-card">
+        <div className="mb-4 flex items-center gap-3">
+          <span className="flex h-11 w-11 select-none items-center justify-center rounded-2xl bg-gradient-to-br from-accent/30 to-accent/10 text-2xl ring-1 ring-accent/30">
+            {copy.app.brand}
+          </span>
+          <div className="leading-tight">
+            <h1 className="text-lg font-semibold">{copy.login.title}</h1>
+            <p className="mt-0.5 text-xs text-zinc-500">{copy.app.subtitle}</p>
+          </div>
+        </div>
         <form
           className="mt-5 space-y-3"
           onSubmit={(e) => {

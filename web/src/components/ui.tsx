@@ -12,7 +12,7 @@ export function Button({
   const base =
     "inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none";
   const styles: Record<ButtonVariant, string> = {
-    primary: "bg-accent text-zinc-950 hover:bg-emerald-300",
+    primary: "bg-accent text-zinc-950 hover:bg-accent-soft",
     ghost: "bg-transparent text-zinc-300 hover:bg-surface-raised border border-surface-border",
     danger: "bg-red-900/60 text-red-200 hover:bg-red-800/70 border border-red-900",
   };
@@ -42,9 +42,11 @@ export function Input({ className = "", ...props }: InputHTMLAttributes<HTMLInpu
 export function Badge({
   children,
   tone = "neutral",
+  className = "",
 }: {
   children: ReactNode;
   tone?: "neutral" | "success" | "warn" | "error";
+  className?: string;
 }) {
   const tones = {
     neutral: "bg-zinc-800 text-zinc-300 border-zinc-700",
@@ -54,7 +56,7 @@ export function Badge({
   } as const;
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${tones[tone]}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${tones[tone]} ${className}`}
     >
       {children}
     </span>
