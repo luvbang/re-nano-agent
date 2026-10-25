@@ -43,6 +43,8 @@ class ToolCompleted:
     name: str
     status: ToolStatus
     duration_ms: int
+    #: 工具输出预览（v0.2-4 控制台文件预览用；工具管线已截断，SSE 序列化时再封顶）
+    result: str = ""
 
 
 @dataclass(frozen=True, slots=True)

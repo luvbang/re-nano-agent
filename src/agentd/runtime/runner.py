@@ -206,6 +206,7 @@ class AgentRunner:
                     name=call.name,
                     status="error" if result.is_error else "ok",
                     duration_ms=duration_ms,
+                    result=result.content,
                 )
 
     async def _execute(self, call: ToolCallCompleted) -> ToolResult:
