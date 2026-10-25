@@ -167,15 +167,13 @@ async def test_run_extraction_writes_memories(tmp_path: Path) -> None:
             await asyncio.sleep(0.02)
         assert run["status"] == "completed"
 
-        # 提取是旁路任务：轮询记忆列表直到入库（上限 ~5s）
-        rows: list[dict[str, Any]] = []
-        for _ in range(250):
-            rows = (
-                await client.get("/v1/memories?status=active", headers=headers)
-            ).json()
-            if rows:
-                break
-            await asyncio.sleep(0.02)
+        # 提取是旁路任务：直接等待后台任务集收尾（确定性，不靠轮询碰运气）
+        manager = app.state.run_manager
+        if manager._bg_tasks:
+            await asyncio.gather(*manager._bg_tasks, return_exceptions=True)
+        rows: list[dict[str, Any]] = (
+            await client.get("/v1/memories?status=active", headers=headers)
+        ).json()
         contents = {r["content"] for r in rows}
         assert contents == {"用户偏好深色主题", "项目使用 SQLite"}
         # run 结果不受提取影响
