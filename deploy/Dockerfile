@@ -27,6 +27,9 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 COPY pyproject.toml README.md ./
+# pyproject 声明了 uv workspace（members = ["sdk/agentd-client"]，dev 组引用），
+# 元数据解析需要成员在场；uv pip install 不装 dev 组，运行时镜像不含 SDK
+COPY sdk ./sdk
 COPY src ./src
 RUN uv venv /opt/venv \
     && uv pip install --python /opt/venv/bin/python --no-cache .
