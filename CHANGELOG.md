@@ -6,6 +6,17 @@
 
 ### Added（v0.2 进行中）
 
+- **控制台完善·工具结果预览**（retro v0.2-4）：`tool.completed` SSE 事件增补
+  `result` 字段（工具输出预览，线上 2000 字符封顶，契约只加不破）；控制台工具卡
+  升级「参数 + 结果」两段式（文件工具带路径头，历史回放由 role=tool 消息补齐）
+- **控制台完善·用量看板**（retro v0.2-4）：明细表（runs/输入/输出/费用 + 费用
+  占比条）与 CSV 导出（RFC 4180 转义 + BOM，Excel 直开）
+- **控制台完善·Playwright 冒烟进 CI**（retro v0.2-4）：demo 模式全离线全链路
+  （登录演示 → Playground 发送 → 工具卡结果预览 → 管理 4 页渲染）；
+  `cd web && npm run test:e2e`，CI 新增 smoke job
+- **会话重命名/删除**：`PATCH /v1/sessions/{id}`（改 title）/ `DELETE /v1/sessions/{id}`
+  （级联清消息与运行引用）+ SDK `rename_session/delete_session` + 控制台 Topics 工作台入口
+
 - **记忆与自动整理**（retro v0.2-3）：`memories` 表（迁移 003，project 作用域）+
   `MemoryService`——写入精确去重（bump last_seen）、注入按 score/last_seen 预算内
   并入 system（注入即确认刷新 last_seen）、run 成功后的旁路自动提取

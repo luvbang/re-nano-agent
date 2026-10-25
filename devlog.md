@@ -368,3 +368,39 @@
 
 **下一步（v0.2-4，按 retro 优先级）**
 - 控制台完善（Markdown 渲染 / 文件预览 / 用量看板增强 / 移动端 / Playwright 冒烟进 CI）
+
+---
+
+## 2026-10-25（v0.2-4：控制台完善——两线并行合流）
+
+本轮两条线在 main 上并行推进后合流：并行线交付枫叶品牌化（主题/favicon/文案基建）、
+聊天 Markdown（react-markdown + remark-gfm，流式纯文本、完成后渲染）与悬停复制、
+侧栏 Topics 工作台（重命名/删除/搜索弹窗/拖宽，对接 PATCH/DELETE /v1/sessions）；本线
+交付以下切片，rebase 合入时以对方为基底、保留本线增量（零冲突收束）。
+
+**完成（本线切片）**
+- `tool.completed` SSE 事件增补 `result` 字段（契约只加不破）：runner 携带工具输出
+  （管线已 16k 截断），serialize 线上再封顶 2000 字符（带截断标注），持久化回放同源
+- 控制台工具卡升级「参数 + 结果」两段式：文件工具带路径头，error 结果红色渲染；
+  投影层 result 流转（SSE 事件 + 历史回放由 role=tool 消息补齐），mock 演示同步适配
+- 用量看板：明细表（runs/输入/输出/费用 + 费用占比条）+ CSV 导出
+  （RFC 4180 转义 + BOM，Excel 直开；`usageCsv` 纯函数 + 单测）
+- Playwright 冒烟进 CI（retro 项落地）：demo 模式全离线全链路——登录演示 →
+  Playground 发送 → 工具卡结果预览 → 管理 4 页渲染；`npm run test:e2e`，
+  CI 新增 smoke job（build → chromium → playwright test）
+- 修并行线遗留 typecheck 红线：补 `ApiClient` 接口 renameSession/deleteSession
+  定义、Layout 未用变量（main 恢复绿）
+
+**证据**
+- ruff / mypy（105 files）/ pytest **全绿**（新增 3 序列化单测 + 集成 result 断言）
+- web：typecheck / vitest **20 passed** / build / Playwright **3 passed**
+  （含 Playground 全链路断言工具卡结果预览——result 字段端到端验证）
+
+**技术债（只登记不修）**
+- `/v1/usage` group_by 只有 day/model；project 维度受 ProjectAuth 单项目作用域限制，
+  管理员跨项目聚合需独立 admin 端点（留 v0.2 后续）
+- Playwright 冒烟仅覆盖 demo 模式；真实后端 + SSE 的浏览器级冒烟待部署后补
+- result 预览为纯文本（无 diff 高亮/行号）；文件类工具可后续做语法高亮
+
+**下一步（v0.2-5，按 retro 优先级）**
+- Postgres + 多实例（压测触发时启动）或 PyPI 发布 SDK/主包（视优先级）

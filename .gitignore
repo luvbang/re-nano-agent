@@ -34,3 +34,4 @@ Thumbs.db
 
 # Mimosa 扫描器本地状态
 .mimosa/
+web/test-results/

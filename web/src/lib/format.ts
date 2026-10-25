@@ -50,3 +50,23 @@ export function daysAgoISO(days: number): string {
   d.setDate(d.getDate() - days);
   return d.toISOString().slice(0, 10);
 }
+
+/** 用量明细 CSV（v0.2-4 看板导出）：UTF-8 直出，含逗号/引号的字段按 RFC 4180 转义。 */
+export function usageCsv(
+  items: {
+    bucket: string;
+    runs: number;
+    input_tokens: number;
+    output_tokens: number;
+    cost_usd: number;
+  }[],
+  bucketLabel: string,
+): string {
+  const cell = (v: string | number): string =>
+    typeof v === "number" ? String(v) : /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  const rows = [
+    [bucketLabel, "runs", "input_tokens", "output_tokens", "cost_usd"],
+    ...items.map((it) => [it.bucket, it.runs, it.input_tokens, it.output_tokens, it.cost_usd]),
+  ];
+  return rows.map((r) => r.map(cell).join(",")).join("\n");
+}
