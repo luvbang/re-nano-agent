@@ -86,6 +86,7 @@ class AgentRunner:
         timeout_s: float = 600.0,
         on_message: Callable[[ChatMessage], Awaitable[None]] | None = None,
         context_builder: ContextBuilder | None = None,
+        model: str | None = None,
     ) -> None:
         self.provider = provider
         self.tools = tools
@@ -93,6 +94,7 @@ class AgentRunner:
         self.session_id = session_id
         self.system_prompt = system_prompt
         self.memory_block = memory_block
+        self.model = model
         self.max_iterations = max_iterations
         self.timeout_s = timeout_s
         self.on_message = on_message
@@ -157,7 +159,9 @@ class AgentRunner:
             text = ""
             calls: list[ToolCallCompleted] = []
             stream = self.provider.chat(
-                messages, tools=self.tools.definitions() if self.tools else None
+                messages,
+                tools=self.tools.definitions() if self.tools else None,
+                model=self.model,
             )
             try:
                 async for event in stream:

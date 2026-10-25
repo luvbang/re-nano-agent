@@ -111,11 +111,13 @@ export function createRealClient(opts: RealClientOptions) {
         opts,
       ).then((page) => page.items);
     },
-    createRun: (sessionId: string, input: { input: string }) =>
+    createRun: (sessionId: string, input: { input: string; model?: string }) =>
       request<{ run_id: string }>(`/v1/sessions/${sessionId}/runs`, opts, {
         method: "POST",
         body: JSON.stringify(input),
       }),
+    listModels: () =>
+      request<{ id: string; object: string; tools: boolean }[]>("/v1/models", opts),
     getRun: (runId: string) => request<RunInfo>(`/v1/runs/${runId}`, opts),
     cancelRun: (runId: string) =>
       request<RunInfo>(`/v1/runs/${runId}/cancel`, opts, { method: "POST" }),

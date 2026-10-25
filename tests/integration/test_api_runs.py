@@ -252,3 +252,46 @@ async def test_run_without_model_config_returns_502(tmp_path: Path) -> None:
             )
             assert run.status_code == 502
             assert run.json()["error"]["code"] == "model_error"
+
+
+async def test_run_model_override_reaches_provider(tmp_path: Path) -> None:
+    """请求级 model 覆盖：落库到 run 档并传导到 provider.chat。"""
+    provider = FakeChatProvider(turn_fn=demo_turn)
+    app = create_app(make_settings(tmp_path), provider=provider)
+    async with app.router.lifespan_context(app):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://t") as client:
+            session_id, headers = await setup_session(client)
+            created = await client.post(
+                f"/v1/sessions/{session_id}/runs",
+                json={"input": "你好", "model": "gpt-4o-mini"},
+                headers=headers,
+            )
+            assert created.status_code == 202, created.text
+            run_id: str = created.json()["run_id"]
+            run: dict[str, Any] = {}
+            for _ in range(100):
+                run = (await client.get(f"/v1/runs/{run_id}", headers=headers)).json()
+                if run["status"] in ("completed", "failed"):
+                    break
+                await asyncio.sleep(0.05)
+            assert run["status"] == "completed", run
+            assert run["model"] == "gpt-4o-mini"
+            assert provider.requested_models, "provider 未被调用"
+            assert provider.requested_models[-1] == "gpt-4o-mini"
+
+
+async def test_run_model_mismatch_is_400(tmp_path: Path) -> None:
+    """未知模型（与配置不符）在创建时拒绝，不产生 run。"""
+    app = create_app(make_settings(tmp_path), provider=FakeChatProvider(turn_fn=demo_turn))
+    async with app.router.lifespan_context(app):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://t") as client:
+            session_id, headers = await setup_session(client)
+            resp = await client.post(
+                f"/v1/sessions/{session_id}/runs",
+                json={"input": "你好", "model": "nope"},
+                headers=headers,
+            )
+            assert resp.status_code == 400
+            assert resp.json()["error"]["code"] == "invalid_request"

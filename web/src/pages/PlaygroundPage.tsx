@@ -33,6 +33,8 @@ export function PlaygroundPage() {
   const [pinned, setPinned] = useState(true);
   const [lastUsage, setLastUsage] = useState<Usage | null>(null);
   const [msgSearchOpen, setMsgSearchOpen] = useState(false);
+  const [modelOpen, setModelOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const lastInputRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
@@ -42,6 +44,14 @@ export function PlaygroundPage() {
     queryFn: () => pgClient!.listSessions(50),
     enabled: pgClient !== null,
   });
+
+  const modelsQuery = useQuery({
+    queryKey: ["pg-models", mode, playgroundKey],
+    queryFn: () => pgClient!.listModels(),
+    enabled: pgClient !== null,
+  });
+  const models = modelsQuery.data ?? [];
+  const effectiveModel = selectedModel ?? models[0]?.id ?? null;
 
   const historyQuery = useQuery({
     queryKey: ["pg-messages", mode, playgroundKey, sessionId],
@@ -143,9 +153,9 @@ export function PlaygroundPage() {
         setSearchParams({ session: s.id }, { replace: true });
         void queryClient.invalidateQueries({ queryKey: ["pg-sessions"] });
         void queryClient.invalidateQueries({ queryKey: ["sidebar-sessions"] });
-        await send(text, { sessionId: s.id });
+        await send(text, { sessionId: s.id, model: effectiveModel });
       } else {
-        await send(text);
+        await send(text, { model: effectiveModel });
       }
     } catch {
       // createSession 失败等场景：useRunStream/页面各自收敛，这里不额外处理
@@ -302,6 +312,51 @@ export function PlaygroundPage() {
             className="max-h-48 w-full resize-none bg-transparent px-1 text-sm leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
           />
           <div className="mt-2 flex items-center gap-2 px-1">
+            {/* 模型选择 chip（nanobot 形态）：向上弹层列出可用模型 */}
+            <div className="relative">
+              <button
+                type="button"
+                title={copy.playground.modelLabel}
+                onClick={() => setModelOpen((v) => !v)}
+                className="flex h-7 items-center gap-1.5 rounded-full border border-surface-border bg-surface px-2.5 text-[11px] text-zinc-400 transition-colors hover:border-accent/50 hover:text-amber-200"
+              >
+                <span className="text-[10px]">🍁</span>
+                <span className="max-w-28 truncate">{effectiveModel ?? copy.playground.modelLabel}</span>
+              </button>
+              {modelOpen ? (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setModelOpen(false)} />
+                  <div className="absolute bottom-9 left-0 z-30 w-56 animate-fade-up overflow-hidden rounded-xl border border-surface-border bg-surface-raised py-1 shadow-pop">
+                    <p className="px-3 pb-1 pt-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-600">
+                      {copy.playground.modelLabel}
+                    </p>
+                    {models.length === 0 ? (
+                      <p className="px-3 py-2 text-xs text-zinc-600">{copy.state.empty}</p>
+                    ) : (
+                      models.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedModel(m.id);
+                            setModelOpen(false);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-surface"
+                        >
+                          <span className="flex-1 truncate font-mono">{m.id}</span>
+                          {m.tools ? (
+                            <span className="text-[10px] text-zinc-600">tools</span>
+                          ) : null}
+                          {m.id === effectiveModel ? (
+                            <span className="text-amber-300">✓</span>
+                          ) : null}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </>
+              ) : null}
+            </div>
             {sending ? (
               <span className="flex items-center gap-2 text-[11px] text-zinc-500">
                 <Spinner className="!h-3 !w-3" />

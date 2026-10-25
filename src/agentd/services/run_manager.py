@@ -200,7 +200,9 @@ class RunManager:
         *,
         session_row: dict[str, Any],
         user_input: str,
+        model: str | None = None,
     ) -> dict[str, Any]:
+        """启动 run；model 为请求级覆盖（None = 平台默认），随 run 档落库并传导到 provider。"""
         session_id = str(session_row["id"])
         project_id = str(session_row["project_id"])
         lock = self._session_locks.setdefault(session_id, asyncio.Lock())
@@ -208,7 +210,9 @@ class RunManager:
             raise AppError(ErrorCode.CONFLICT, "session 正在执行另一个 run")
         # 未锁 → 立即占用（acquire 无等待，与 locked() 检查在同一事件循环步内原子）
         await lock.acquire()
-        run = await self.service.create_run(session_id, project_id=project_id, model=self.model)
+        run = await self.service.create_run(
+            session_id, project_id=project_id, model=model or self.model
+        )
         await self.audit.append(
             action="run.created",
             actor="api",

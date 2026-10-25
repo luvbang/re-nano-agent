@@ -93,8 +93,12 @@ class ChatService:
         provider: Provider,
         tools: ToolRegistry | None = None,
         runner_kwargs: dict[str, Any] | None = None,
+        model: str | None = None,
     ) -> AsyncGenerator[RunEvent, None]:
-        """执行既有 run（queued → running → 终态）并落库；事件流与 runner 相同。"""
+        """执行既有 run（queued → running → 终态）并落库；事件流与 runner 相同。
+
+        model：本次 run 的模型覆盖（None = provider 默认）。
+        """
         session_id = str(run["session_id"])
         project_id = str(run["project_id"])
         await self.runs.set_status(str(run["id"]), "running")
@@ -122,6 +126,7 @@ class ChatService:
             session_id=session_id,
             memory_block=memory_block,
             on_message=persist,
+            model=model or str(run.get("model") or "") or None,
             **(runner_kwargs or {}),
         )
         usage_in = usage_out = 0

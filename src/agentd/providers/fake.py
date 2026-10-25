@@ -45,6 +45,7 @@ class FakeChatProvider(Provider):
         # 断言用的观测面
         self.calls: list[list[ChatMessage]] = []
         self.requested_tools: list[list[ToolDefinition] | None] = []
+        self.requested_models: list[str | None] = []
         self.open_streams = 0
 
     async def chat(
@@ -56,6 +57,7 @@ class FakeChatProvider(Provider):
     ) -> AsyncGenerator[ProviderEvent, None]:
         self.calls.append(list(messages))
         self.requested_tools.append(list(tools) if tools else None)
+        self.requested_models.append(model)
         self.open_streams += 1
         try:
             for event in self._next_turn(messages):

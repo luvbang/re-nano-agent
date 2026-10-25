@@ -192,11 +192,15 @@ export function createDemoClient() {
       const filtered = q.beforeSeq ? all.filter((m) => m.seq < q.beforeSeq!) : all;
       return filtered.slice(-(q.limit ?? 100));
     },
-    async createRun(sessionId: string, input: { input: string }): Promise<{ run_id: string }> {
+    async createRun(sessionId: string, input: { input: string; model?: string }): Promise<{ run_id: string }> {
       await delay(40);
       const runId = nextId("r");
       state.runs.set(runId, { runId, sessionId, input: input.input, status: "running" });
       return { run_id: runId };
+    },
+    async listModels(): Promise<{ id: string; object: string; tools: boolean }[]> {
+      await delay(30);
+      return [{ id: "maple-flash", object: "model", tools: true }];
     },
     async getRun(runId: string): Promise<RunInfo> {
       const run = state.runs.get(runId);

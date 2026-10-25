@@ -11,6 +11,7 @@ import type {
   ApiKeyInfo,
   CreatedKey,
   HealthResponse,
+  ModelInfo,
   Project,
   ReadyResponse,
   RunInfo,
@@ -38,7 +39,8 @@ export interface ApiClient {
     sessionId: string,
     q?: { limit?: number; beforeSeq?: number },
   ): Promise<SessionMessage[]>;
-  createRun(sessionId: string, input: { input: string }): Promise<{ run_id: string }>;
+  createRun(sessionId: string, input: { input: string; model?: string }): Promise<{ run_id: string }>;
+  listModels(): Promise<ModelInfo[]>;
   getRun(runId: string): Promise<RunInfo>;
   cancelRun(runId: string): Promise<RunInfo>;
   listProjects(): Promise<Project[]>;
@@ -68,6 +70,7 @@ export function createApiClient(
       deleteSession: (id) => demo.deleteSession(id),
       listMessages: (id, q) => demo.listMessages(id, q),
       createRun: (id, input) => demo.createRun(id, input),
+      listModels: () => demo.listModels(),
       getRun: (id) => demo.getRun(id),
       cancelRun: (id) => demo.cancelRun(id),
       listProjects: () => demo.listProjects(),
@@ -96,6 +99,7 @@ export function createApiClient(
     deleteSession: (id) => real.deleteSession(id),
     listMessages: (id, q) => real.listMessages(id, q),
     createRun: (id, input) => real.createRun(id, input),
+    listModels: () => real.listModels(),
     getRun: (id) => real.getRun(id),
     cancelRun: (id) => real.cancelRun(id),
     listProjects: () => real.listProjects(),

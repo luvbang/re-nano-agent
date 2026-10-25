@@ -64,6 +64,7 @@ export const copy = {
     bindKeyTitle: "对话需要项目 Key",
     bindKeyHint: "项目 Key 限定单个 project 的最小权限（管理员 Key 不能跑对话）。到 Keys 页创建并绑定后开始。",
     bindKeyAction: "去 Keys 页绑定",
+    modelLabel: "模型",
     usageBar: (i: number, o: number) => `输入 ${i} tokens · 输出 ${o} tokens`,
     failedBar: (code: string, message: string) => `运行失败 [${code}]：${message}`,
     cancelledBar: "本次运行已取消，部分生成内容不会写入会话历史",

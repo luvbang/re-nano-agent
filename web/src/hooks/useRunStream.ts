@@ -18,7 +18,7 @@ import {
 export interface UseRunStreamResult {
   projection: RunProjection;
   sending: boolean;
-  send: (text: string, opts?: { sessionId?: string }) => Promise<void>;
+  send: (text: string, opts?: { sessionId?: string; model?: string | null }) => Promise<void>;
   cancel: () => Promise<void>;
   reset: () => void;
 }
@@ -39,7 +39,7 @@ export function useRunStream(client: ApiClient, sessionId: string | null): UseRu
   );
 
   const send = useCallback(
-    async (text: string, opts?: { sessionId?: string }) => {
+    async (text: string, opts?: { sessionId?: string; model?: string | null }) => {
       // opts.sessionId：草稿话题先建会话立即发送（setState 尚未渲染，ref 还是旧值）
       const sid = opts?.sessionId ?? sessionRef.current;
       if (!sid || !text.trim() || sending) return;
@@ -52,7 +52,10 @@ export function useRunStream(client: ApiClient, sessionId: string | null): UseRu
       const controller = new AbortController();
       abortRef.current = controller;
       try {
-        const { run_id: runId } = await client.createRun(sid, { input: text });
+        const { run_id: runId } = await client.createRun(sid, {
+          input: text,
+          ...(opts?.model ? { model: opts.model } : {}),
+        });
         if (controller.signal.aborted) return;
         runIdRef.current = runId;
         for await (const ev of client.streamRunEvents(runId, { signal: controller.signal })) {

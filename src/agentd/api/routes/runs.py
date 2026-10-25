@@ -15,6 +15,7 @@ from agentd.api.auth import ProjectAuth
 from agentd.api.deps import DbDep
 from agentd.api.errors import AppError, ErrorCode
 from agentd.api.schemas import ErrorEnvelope
+from agentd.config import Settings
 from agentd.services.run_manager import RunManager
 from agentd.storage.repositories import IdempotencyRepository, RunRepository
 
@@ -96,7 +97,15 @@ async def create_run(
             row = await RunRepository(db).get(existing)
             if row is not None:
                 return RunCreated(run_id=existing, status=str(row["status"]))
-    run = await manager.start(session_row=session, user_input=body.input)
+    # 模型覆盖：平台当前为单配置模型，请求级 model 必须与之匹配（多 provider 时放宽为白名单）
+    if body.model is not None:
+        settings: Settings = request.app.state.settings
+        if body.model != settings.llm_model:
+            raise AppError(
+                ErrorCode.INVALID_REQUEST,
+                f"未知模型：{body.model}（可用：{settings.llm_model}）",
+            )
+    run = await manager.start(session_row=session, user_input=body.input, model=body.model)
     if idempotency_key:
         await IdempotencyRepository(db).bind(
             idempotency_key, run_id=str(run["id"]), session_id=session_id

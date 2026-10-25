@@ -8,6 +8,13 @@ export interface Usage {
   output_tokens: number;
 }
 
+/** GET /v1/models 的条目（当前单配置模型；多 provider 时扩展为列表） */
+export interface ModelInfo {
+  id: string;
+  object: string;
+  tools: boolean;
+}
+
 export interface ToolCallWire {
   id: string;
   type: "function";
