@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useAdminKey } from "../hooks/useAdminKey";
 import { useRunStream } from "../hooks/useRunStream";
 import { historyToItems, type ChatItem } from "../projection/run-projection";
@@ -21,9 +21,11 @@ const PIN_THRESHOLD_PX = 60;
 
 export function PlaygroundPage() {
   const { client, playgroundClient, playgroundKey, setPlaygroundKey, mode } = useAdminKey();
-  // 全部请求使用绑定的项目 key（无绑定则回落管理员 key），保证会话/消息同一 project 作用域
-  const pgClient = playgroundClient ?? client;
+  // 项目级端点只吃 project scope：管理员 key 请求会 401 并触发全局登出，
+  // 因此对话页仅在绑定项目 key 后工作，否则显示绑定引导
+  const pgClient = playgroundClient;
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlSession = searchParams.get("session");
   const [sessionId, setSessionId] = useState<string | null>(urlSession);
@@ -37,16 +39,20 @@ export function PlaygroundPage() {
 
   const sessionsQuery = useQuery({
     queryKey: ["pg-sessions", mode, playgroundKey],
-    queryFn: () => pgClient.listSessions(50),
+    queryFn: () => pgClient!.listSessions(50),
+    enabled: pgClient !== null,
   });
 
   const historyQuery = useQuery({
     queryKey: ["pg-messages", mode, playgroundKey, sessionId],
-    queryFn: () => pgClient.listMessages(sessionId!, { limit: 100 }),
-    enabled: sessionId !== null,
+    queryFn: () => pgClient!.listMessages(sessionId!, { limit: 100 }),
+    enabled: pgClient !== null && sessionId !== null,
   });
 
-  const { projection, sending, send, cancel, reset } = useRunStream(pgClient, sessionId);
+  const { projection, sending, send, cancel, reset } = useRunStream(
+    pgClient ?? client,
+    sessionId,
+  );
 
   // run 成功后：服务端已落库 → 刷新历史、以服务端真相渲染，再清空本轮流式投影
   useEffect(() => {
@@ -123,6 +129,7 @@ export function PlaygroundPage() {
   const submit = async () => {
     const text = draft.trim();
     if (!text || sending) return;
+    if (!pgClient) return;
     setDraft("");
     setLastUsage(null);
     lastInputRef.current = text;
@@ -148,7 +155,8 @@ export function PlaygroundPage() {
   const showFailedBar = projection.phase === "failed" && projection.error !== null;
   const showCancelledBar = projection.phase === "cancelled" && projection.items.length > 0;
   const usage = projection.phase === "completed" ? projection.usage : lastUsage;
-  const showHero = items.length === 0 && !sending && !showFailedBar;
+  const showBindKey = pgClient === null;
+  const showHero = !showBindKey && items.length === 0 && !sending && !showFailedBar;
 
   return (
     <div className="flex h-full min-w-0 flex-col">
@@ -192,7 +200,20 @@ export function PlaygroundPage() {
       <div className="relative min-h-0 flex-1">
         <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
           <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
-            {showHero ? (
+            {showBindKey ? (
+              <div className="flex h-[52vh] flex-col items-center justify-center gap-3 text-center">
+                <span className="text-5xl">{copy.app.brand}</span>
+                <h2 className="text-xl font-semibold text-zinc-100">
+                  {copy.playground.bindKeyTitle}
+                </h2>
+                <p className="max-w-sm text-xs leading-relaxed text-zinc-500">
+                  {copy.playground.bindKeyHint}
+                </p>
+                <Button onClick={() => navigate("/keys")}>
+                  {copy.playground.bindKeyAction}
+                </Button>
+              </div>
+            ) : showHero ? (
               <div className="flex h-[52vh] flex-col items-center justify-center gap-3 text-center">
                 <span className="text-5xl">{copy.app.brand}</span>
                 <h2 className="text-xl font-semibold text-zinc-100">

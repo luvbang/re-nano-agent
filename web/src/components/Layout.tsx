@@ -161,8 +161,10 @@ function TopicRow({
 }
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { mode, signOut, client, playgroundClient } = useAdminKey();
-  const pgClient = playgroundClient ?? client;
+  const { mode, signOut, playgroundKey, playgroundClient } = useAdminKey();
+  // 项目级端点（/v1/sessions*）只吃 project scope：管理员 key 会 401 且触发全局登出，
+  // 侧栏仅在绑定项目 key 后加载话题，否则显示绑定引导
+  const pgClient = playgroundClient;
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -174,8 +176,9 @@ export function Layout({ children }: { children: ReactNode }) {
   const activeSession = inPlayground ? searchParams.get("session") : null;
 
   const sessionsQuery = useQuery({
-    queryKey: ["sidebar-sessions", mode, pgClient],
-    queryFn: () => pgClient.listSessions(100),
+    queryKey: ["sidebar-sessions", mode, playgroundKey],
+    queryFn: () => pgClient!.listSessions(100),
+    enabled: pgClient !== null,
   });
   const sessions = sessionsQuery.data ?? [];
 
@@ -186,12 +189,14 @@ export function Layout({ children }: { children: ReactNode }) {
   };
 
   const newTopic = async () => {
+    if (!pgClient) return;
     const s = await pgClient.createSession({});
     refreshSessions();
     navigate(`/playground?session=${s.id}`);
   };
 
   const renameTopic = async (id: string, title: string) => {
+    if (!pgClient) return;
     try {
       await pgClient.renameSession(id, title);
       refreshSessions();
@@ -201,6 +206,7 @@ export function Layout({ children }: { children: ReactNode }) {
   };
 
   const deleteTopic = async (id: string) => {
+    if (!pgClient) return;
     if (!window.confirm(copy.sidebar.deleteConfirm)) return;
     try {
       await pgClient.deleteSession(id);
@@ -212,6 +218,7 @@ export function Layout({ children }: { children: ReactNode }) {
   };
 
   const adminItems = [
+    { to: "/playground", label: copy.nav.playground },
     { to: "/sessions", label: copy.nav.sessions },
     { to: "/keys", label: copy.nav.keys },
     { to: "/usage", label: copy.nav.usage },
@@ -259,7 +266,18 @@ export function Layout({ children }: { children: ReactNode }) {
           <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-600">
             {copy.sidebar.topics}
           </p>
-          {sessionsQuery.isLoading ? (
+          {!pgClient ? (
+            <div className="px-2 py-3">
+              <p className="text-xs leading-relaxed text-zinc-500">{copy.sidebar.bindKeyHint}</p>
+              <button
+                type="button"
+                onClick={() => navigate("/keys")}
+                className="mt-2 text-xs text-amber-300 underline underline-offset-2 hover:text-amber-200"
+              >
+                {copy.sidebar.bindKeyAction} →
+              </button>
+            </div>
+          ) : sessionsQuery.isLoading ? (
             <p className="px-2 py-2 text-xs text-zinc-600">…</p>
           ) : sessions.length === 0 ? (
             <p className="px-2 py-2 text-xs leading-relaxed text-zinc-600">

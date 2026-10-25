@@ -30,6 +30,8 @@ export const copy = {
     renameFailed: (message: string) => `重命名失败：${message}`,
     untitled: "（无标题会话）",
     emptyTopics: "还没有话题，点上方「新话题」开始",
+    bindKeyHint: "对话功能需要项目 Key",
+    bindKeyAction: "去 Keys 页绑定",
   },
   topicSearch: {
     title: "搜索话题",
@@ -59,6 +61,9 @@ export const copy = {
     emptySessions: "还没有会话",
     emptyTitle: "今天想做点什么？",
     emptySubtitle: "输入消息开始对话；流式回答与工具调用会实时出现在这里",
+    bindKeyTitle: "对话需要项目 Key",
+    bindKeyHint: "项目 Key 限定单个 project 的最小权限（管理员 Key 不能跑对话）。到 Keys 页创建并绑定后开始。",
+    bindKeyAction: "去 Keys 页绑定",
     usageBar: (i: number, o: number) => `输入 ${i} tokens · 输出 ${o} tokens`,
     failedBar: (code: string, message: string) => `运行失败 [${code}]：${message}`,
     cancelledBar: "本次运行已取消，部分生成内容不会写入会话历史",
