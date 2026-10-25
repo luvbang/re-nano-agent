@@ -38,7 +38,7 @@
 ## v0.2 Roadmap（优先级序）
 
 1. **MCP 支持**（外部工具生态，预期价值最高）
-2. 多 provider（Anthropic 原生/Responses）+ 失败自动切换 + SSRF pinned transport
+2. ✅ 多 provider（Anthropic 原生/Responses）+ 失败自动切换 + SSRF pinned transport（2026-10-25 完成）
 3. 记忆与自动整理（参考 nanobot Memory/Dream 思路，按需裁剪）
 4. 控制台完善（文件预览/多会话切换/用量看板/移动端打磨/Playwright 冒烟进 CI）
 5. Postgres + 多实例（Repository 抽象已就位，压测触发时启动）

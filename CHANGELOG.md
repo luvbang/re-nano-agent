@@ -6,6 +6,16 @@
 
 ### Added（v0.2 进行中）
 
+- **多 provider + 故障自动切换**（retro v0.2-2）：`AGENTD_LLM_PROVIDER` 支持
+  `openai`（chat.completions）/ `responses`（OpenAI Responses API）/ `anthropic`
+  （Messages API 原生，x-api-key + SSE text/tool_use 块映射），`AGENTD_LLM_FALLBACKS`
+  配置备选链——主 provider 重试耗尽且未产出任何事件时整链切换（已产出 delta 不切换，
+  与重试语义对齐，杜绝重复输出）；`providers/factory.py` 统一装配（向后兼容：仅配
+  llm_api_key 等价旧行为）；respx fixture 全覆盖（文本/工具/usage/429/5xx/断流/error 事件）
+- **SSRF pinned transport**：web_fetch 把校验阶段解析到的公网 IP 钉进连接层
+  （`security/pinned.py`，TLS SNI/证书校验与 Host 头保持原主机名），消除
+  「校验时公网、连接时被 DNS rebinding 到内网」的 TOCTOU 窗口（M2 技术债清偿）
+
 - **MCP 工具支持**：`AGENTD_MCP_SERVERS`（JSON）挂接任意 MCP 服务器的工具——Streamable HTTP 握手（initialize/会话头/notifications）、`tools/list` 发现、`tools/call` 桥接（isError 映射工具错误）；单服务器故障跳过不影响启动；走统一工具管线（超时/审计/截断）。`docs/mcp.md`
 - `agentd purge --project <id> [--yes]`：go-live 数据保留项——级联删除 project 数据、审计脱钩保留、无 --yes 只打印计划
 - OpenAPI 契约快照守护（`tests/fixtures/openapi.json`，变更须显式 --regen）

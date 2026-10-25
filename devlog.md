@@ -304,3 +304,37 @@
 - assistant 回复仍是纯文本渲染（无 Markdown/代码高亮）——zh 线 P1 清单第一位，需引入 react-markdown 并同步做 recharts 路由级 code-split
 - zh 线后端实现（src/agentd 的平行 M2/M3/M4）随 zh 分支留档，不再维护；SDK 位置差异（zh: src/agentd/sdk vs main: sdk/）以 main 为准
 - 全局限流桶全局共享：多副本部署需换共享存储（v0.1 单实例不变）
+
+---
+
+## 2026-10-25（v0.2-2：多 provider + 故障切换 + SSRF pinned transport）
+
+**完成**
+- `providers/anthropic.py`：Anthropic Messages API 原生实现——system 提取为顶层、
+  assistant tool_calls → tool_use 块、tool → tool_result（连续同角色自动合并）；
+  SSE 按 content_block index 累积 tool_use 的 input_json_delta，块结束即产出完整调用；
+  message_stop 终态严格校验（对齐 openai_compat 的 [DONE] 规则）；error 事件/429/5xx/529 归一化
+- `providers/responses.py`：OpenAI Responses API——input 条目映射（function_call /
+  function_call_output 一等公民）、instructions 承载 system、arguments 分片累积、
+  completed/incomplete 终态映射 stop/length
+- `providers/failover.py`：FailoverProvider——仅在「未产出任何事件」时切换下一个
+  provider（与 RetryingProvider 语义对齐，已产出 delta 不切换、杜绝重复输出）；
+  `providers/factory.py`：按 llm_provider + llm_fallbacks 装配重试/切换链
+  （向后兼容：仅配 llm_api_key 等价旧行为）；main/CLI 装配统一走工厂
+- `security/pinned.py` + web_fetch 集成：校验阶段解析到的公网 IP 钉进连接层
+  （自定义 httpx transport：URL host → IP，TLS SNI/证书校验与 Host 头保持原主机名，
+  逐跳重钉），清偿 M2 登记的 DNS TOCTOU 技术债
+- Provider 基类补 model 类属性（run 记录/用量归属/链展示统一取用处）
+
+**证据**
+- ruff / mypy（100 files）/ pytest **223 passed, 3 skipped**（新增 32 用例：
+  anthropic 9 + responses 9 + failover/工厂 8 + pinned 3 + ssrf mock 适配 3）
+- 本地全量门禁绿；两个新 provider 均为 respx fixture 全覆盖（真实 key 仍待人工冒烟）
+
+**技术债（只登记不修）**
+- pinned transport 多 A 记录只钉第一个（连接失败的 IP 轮询容错未做）
+- 故障切换为静默切换（不产生 run 事件）；用量/审计已可按模型区分，控制台提示留待 v0.2-4
+- Responses API 的 reasoning 事件仅透传（ReasoningDelta），不渲染
+
+**下一步（v0.2-3，按 retro 优先级）**
+- 记忆与自动整理（nanobot Memory/Dream 思路裁剪）
