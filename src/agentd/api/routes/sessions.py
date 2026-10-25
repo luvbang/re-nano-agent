@@ -10,7 +10,14 @@ from fastapi import APIRouter, Query
 from agentd.api.auth import ProjectAuth
 from agentd.api.deps import DbDep
 from agentd.api.errors import AppError, ErrorCode
-from agentd.api.schemas import ErrorEnvelope, MessageOut, MessagePage, SessionCreate, SessionOut
+from agentd.api.schemas import (
+    ErrorEnvelope,
+    MessageOut,
+    MessagePage,
+    SessionCreate,
+    SessionOut,
+    SessionUpdate,
+)
 from agentd.storage.repositories import MessageRepository, SessionRepository
 
 router = APIRouter(prefix="/v1/sessions", tags=["sessions"])
@@ -73,6 +80,38 @@ async def list_sessions(
 )
 async def get_session(session_id: str, auth: ProjectAuth, db: DbDep) -> SessionOut:
     return _session_out(await _get_session(db, session_id, str(auth.project["id"])))
+
+
+@router.patch(
+    "/{session_id}",
+    response_model=SessionOut,
+    summary="重命名会话",
+    responses={400: {"model": ErrorEnvelope}, 404: {"model": ErrorEnvelope}},
+)
+async def rename_session(
+    session_id: str, body: SessionUpdate, auth: ProjectAuth, db: DbDep
+) -> SessionOut:
+    title = body.title.strip()
+    if not title:
+        raise AppError(ErrorCode.INVALID_REQUEST, "标题不能为空")
+    row = await SessionRepository(db).rename(
+        session_id, project_id=str(auth.project["id"]), title=title
+    )
+    if row is None:
+        raise AppError(ErrorCode.NOT_FOUND, f"session 不存在：{session_id}")
+    return _session_out(row)
+
+
+@router.delete(
+    "/{session_id}",
+    status_code=204,
+    summary="删除会话（级联删除消息与 runs；用量记录保留）",
+    responses={404: {"model": ErrorEnvelope}},
+)
+async def delete_session(session_id: str, auth: ProjectAuth, db: DbDep) -> None:
+    deleted = await SessionRepository(db).delete(session_id, project_id=str(auth.project["id"]))
+    if not deleted:
+        raise AppError(ErrorCode.NOT_FOUND, f"session 不存在：{session_id}")
 
 
 @router.get(

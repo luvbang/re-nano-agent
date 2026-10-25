@@ -132,6 +132,29 @@ class SessionRepository(Repository):
             (session_id,),
         )
 
+    async def rename(
+        self, session_id: str, *, project_id: str, title: str
+    ) -> dict[str, Any] | None:
+        row = await self.get(session_id, project_id=project_id)
+        if row is None:
+            return None
+        await self.db.execute(
+            "UPDATE sessions SET title = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')"
+            " WHERE id = ?",
+            (title, session_id),
+        )
+        updated = await self.get(session_id, project_id=project_id)
+        assert updated is not None
+        return updated
+
+    async def delete(self, session_id: str, *, project_id: str) -> bool:
+        """删除会话（FK 级联清 messages/runs/events/tool_calls；usage 的 run_id 置空保留）。"""
+        row = await self.get(session_id, project_id=project_id)
+        if row is None:
+            return False
+        await self.db.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+        return True
+
 
 class MessageRepository(Repository):
     """会话消息（模型回放的唯一真相）。content_json 存 ``{"text": ...}``，为多模态块预留。"""

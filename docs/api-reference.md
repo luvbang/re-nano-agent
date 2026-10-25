@@ -13,6 +13,7 @@
 |---|---|
 | `POST /v1/sessions` / `GET /v1/sessions` | 建 / 列会话（倒序） |
 | `GET /v1/sessions/{id}` / `GET /v1/sessions/{id}/messages` | 详情 / 消息（seq 升序，`before_seq` 翻页） |
+| `PATCH /v1/sessions/{id}` / `DELETE /v1/sessions/{id}` | 重命名 / 删除（级联删消息与 runs，用量记录保留） |
 | `POST /v1/sessions/{id}/runs` | 创建 run → `202 {run_id, status}`；`Idempotency-Key` 5 分钟窗口 |
 | `GET /v1/runs/{id}` | 状态/用量/错误 |
 | `GET /v1/runs/{id}/events` | SSE 事件流（`Last-Event-ID` 续传，15s 心跳） |

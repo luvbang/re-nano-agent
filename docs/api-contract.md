@@ -16,6 +16,8 @@
 ```http
 POST   /v1/sessions                       # {external_user_id?, metadata?, title?} -> {id, ...}
 GET    /v1/sessions/{id}                  # 会话信息
+PATCH  /v1/sessions/{id}                  # {title} 重命名 -> {id, ...}
+DELETE /v1/sessions/{id}                  # 204；级联删消息与 runs，用量记录保留
 GET    /v1/sessions/{id}/messages         # ?limit=&before= 分页
 POST   /v1/sessions/{id}/runs             # {input, stream?, model?, tools?, metadata?}
                                           # -> 202 {run_id}（配合 events 端点）

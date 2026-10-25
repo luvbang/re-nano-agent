@@ -125,6 +125,16 @@ class AsyncClient:
         result: dict[str, Any] = await self._request("GET", f"/v1/sessions/{session_id}")
         return result
 
+    async def rename_session(self, session_id: str, *, title: str) -> dict[str, Any]:
+        result: dict[str, Any] = await self._request(
+            "PATCH", f"/v1/sessions/{session_id}", json_body={"title": title}
+        )
+        return result
+
+    async def delete_session(self, session_id: str) -> dict[str, Any]:
+        result: dict[str, Any] = await self._request("DELETE", f"/v1/sessions/{session_id}")
+        return result
+
     async def list_messages(
         self, session_id: str, *, limit: int = 50, before_seq: int | None = None
     ) -> dict[str, Any]:

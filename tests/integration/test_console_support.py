@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -119,3 +120,56 @@ async def test_spa_fallback_preserves_api_envelope(tmp_path: Path) -> None:
         # 非 GET/HEAD 不回退（未知写路径保持 405/404 语义）
         post = await c.post("/playground")
         assert post.status_code in (404, 405)
+
+
+async def test_rename_session(client: AsyncClient) -> None:
+    headers = await issue_key(client)
+    session = (
+        await client.post("/v1/sessions", json={"title": "旧标题"}, headers=headers)
+    ).json()
+
+    renamed = await client.patch(
+        f"/v1/sessions/{session['id']}", json={"title": "  新标题  "}, headers=headers
+    )
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json()["title"] == "新标题"  # 去首尾空白
+
+    empty = await client.patch(
+        f"/v1/sessions/{session['id']}", json={"title": "   "}, headers=headers
+    )
+    assert empty.status_code == 400 and empty.json()["error"]["code"] == "invalid_request"
+
+    missing = await client.patch("/v1/sessions/s_missing", json={"title": "x"}, headers=headers)
+    assert missing.status_code == 404
+
+
+async def test_delete_session_cascades(client: AsyncClient) -> None:
+    headers = await issue_key(client)
+    session = (await client.post("/v1/sessions", json={}, headers=headers)).json()
+    created = await client.post(
+        f"/v1/sessions/{session['id']}/runs", json={"input": "你好"}, headers=headers
+    )
+    assert created.status_code == 202, created.text
+    run_id: str = created.json()["run_id"]
+    # 等 run 到终态再删：执行中的 run 后台仍会写 events（FK 引用），删除时机由调用方保证
+    for _ in range(200):
+        run = await client.get(f"/v1/runs/{run_id}", headers=headers)
+        if run.status_code == 404 or run.json()["status"] in (
+            "completed",
+            "failed",
+            "cancelled",
+            "interrupted",
+        ):
+            break
+        await asyncio.sleep(0.05)
+
+    deleted = await client.delete(f"/v1/sessions/{session['id']}", headers=headers)
+    assert deleted.status_code == 204
+    assert deleted.content == b""
+
+    gone = await client.get(f"/v1/sessions/{session['id']}", headers=headers)
+    assert gone.status_code == 404
+    messages = await client.get(f"/v1/sessions/{session['id']}/messages", headers=headers)
+    assert messages.status_code == 404
+    again = await client.delete(f"/v1/sessions/{session['id']}", headers=headers)
+    assert again.status_code == 404

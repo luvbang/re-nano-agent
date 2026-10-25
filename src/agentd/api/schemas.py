@@ -39,6 +39,10 @@ class SessionCreate(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class SessionUpdate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+
+
 class SessionOut(BaseModel):
     id: str
     project_id: str

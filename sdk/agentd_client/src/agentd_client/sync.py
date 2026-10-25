@@ -71,6 +71,16 @@ class Client:
         result: dict[str, Any] = self._runner.run(self._async.get_session(session_id))
         return result
 
+    def rename_session(self, session_id: str, *, title: str) -> dict[str, Any]:
+        result: dict[str, Any] = self._runner.run(self._async.rename_session(
+            session_id, title=title
+        ))
+        return result
+
+    def delete_session(self, session_id: str) -> dict[str, Any]:
+        result: dict[str, Any] = self._runner.run(self._async.delete_session(session_id))
+        return result
+
     def list_messages(self, session_id: str, *, limit: int = 50,
                       before_seq: int | None = None) -> dict[str, Any]:
         result: dict[str, Any] = self._runner.run(self._async.list_messages(
