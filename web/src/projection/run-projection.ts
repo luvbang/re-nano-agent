@@ -19,8 +19,15 @@ export interface ToolCallView {
 }
 
 export type ChatItem =
-  | { kind: "user"; text: string }
-  | { kind: "assistant"; text: string; streaming: boolean; tools: ToolCallView[] };
+  | { kind: "user"; text: string; id?: string; createdAt?: string | null }
+  | {
+      kind: "assistant";
+      text: string;
+      streaming: boolean;
+      tools: ToolCallView[];
+      id?: string;
+      createdAt?: string | null;
+    };
 
 export type RunPhase = "idle" | "streaming" | "completed" | "failed" | "cancelled";
 
@@ -146,7 +153,7 @@ export function historyToItems(messages: SessionMessage[]): ChatItem[] {
   const toolNameById = new Map<string, string>();
   for (const m of messages) {
     if (m.role === "user" && m.content !== null) {
-      items.push({ kind: "user", text: m.content });
+      items.push({ kind: "user", text: m.content, id: m.id, createdAt: m.created_at });
     } else if (m.role === "assistant") {
       const tools: ToolCallView[] = (m.tool_calls ?? []).map((c) => {
         toolNameById.set(c.id, c.function.name);
@@ -163,6 +170,8 @@ export function historyToItems(messages: SessionMessage[]): ChatItem[] {
         text: m.content ?? "",
         streaming: false,
         tools,
+        id: m.id,
+        createdAt: m.created_at,
       });
     } else if (m.role === "tool" && m.tool_call_id) {
       // 工具结果消息：并入前一条 assistant 的工具卡（历史里只有 ok 态）

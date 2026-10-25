@@ -93,6 +93,13 @@ export function createRealClient(opts: RealClientOptions) {
         body: JSON.stringify(input),
       }),
     getSession: (id: string) => request<SessionInfo>(`/v1/sessions/${id}`, opts),
+    renameSession: (id: string, title: string) =>
+      request<SessionInfo>(`/v1/sessions/${id}`, opts, {
+        method: "PATCH",
+        body: JSON.stringify({ title }),
+      }),
+    deleteSession: (id: string) =>
+      request<void>(`/v1/sessions/${id}`, opts, { method: "DELETE" }),
     listMessages: (sessionId: string, q: { limit?: number; beforeSeq?: number } = {}) => {
       const params = new URLSearchParams();
       if (q.limit) params.set("limit", String(q.limit));

@@ -168,6 +168,21 @@ export function createDemoClient() {
       if (!s) throw new Error("not_found");
       return s;
     },
+    async renameSession(id: string, title: string): Promise<SessionInfo> {
+      await delay(40);
+      const s = state.sessions.find((x) => x.id === id);
+      if (!s) throw new Error("not_found");
+      s.title = title;
+      s.updated_at = nowISO();
+      return s;
+    },
+    async deleteSession(id: string): Promise<void> {
+      await delay(40);
+      const index = state.sessions.findIndex((x) => x.id === id);
+      if (index < 0) throw new Error("not_found");
+      state.sessions.splice(index, 1);
+      state.messages.delete(id);
+    },
     async listMessages(
       sessionId: string,
       q: { limit?: number; beforeSeq?: number } = {},

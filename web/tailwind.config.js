@@ -10,13 +10,28 @@ export default {
           raised: "#171a21",
           border: "#262b36",
         },
+        // 品牌色：🍁 枫叶琥珀（原 emerald 系换成 maple 系）
         accent: {
-          DEFAULT: "#34d399",
-          dim: "#065f46",
+          DEFAULT: "#f59e0b",
+          dim: "#78350f",
+          soft: "#fbbf24",
         },
       },
       fontFamily: {
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],
+      },
+      boxShadow: {
+        card: "0 1px 2px 0 rgb(0 0 0 / 0.25), 0 4px 16px -8px rgb(0 0 0 / 0.35)",
+        pop: "0 8px 32px -8px rgb(0 0 0 / 0.55)",
+      },
+      keyframes: {
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(4px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "fade-up": "fade-up 0.18s ease-out",
       },
     },
   },
