@@ -1,10 +1,11 @@
-/** 对话气泡：用户右侧、assistant 左侧（含工具卡与流式光标）。 */
+/** 对话气泡：用户右侧、assistant 左侧（含工具卡与流式光标）。memo 化：流式期间只有最后一段重渲染。 */
 
+import { memo } from "react";
 import type { ChatItem } from "../projection/run-projection";
 import { StreamText } from "./StreamText";
 import { ToolCallCard } from "./ToolCallCard";
 
-export function ChatMessageView({ item }: { item: ChatItem }) {
+export const ChatMessageView = memo(function ChatMessageView({ item }: { item: ChatItem }) {
   if (item.kind === "user") {
     return (
       <div className="flex justify-end">
@@ -26,4 +27,4 @@ export function ChatMessageView({ item }: { item: ChatItem }) {
       ) : null}
     </div>
   );
-}
+});

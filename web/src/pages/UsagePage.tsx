@@ -1,4 +1,4 @@
-/** Usage：按天/按模型聚合图表，日期范围查询（消费 GET /v1/usage）。 */
+/** Usage：按天/按模型聚合图表，日期范围即改即查，附汇总卡片（消费 GET /v1/usage）。 */
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -7,6 +7,7 @@ import { UsageByDayChart, UsageByModelChart } from "../components/UsageChart";
 import { ErrorState, LoadingState } from "../components/StateViews";
 import { Button, Card, Input } from "../components/ui";
 import { copy } from "../lib/copy";
+import { formatCost, formatTokens } from "../lib/format";
 import { daysAgoISO, todayISO } from "../lib/format";
 import type { UsageGroupBy } from "../api/types";
 
@@ -15,14 +16,17 @@ export function UsagePage() {
   const [from, setFrom] = useState(daysAgoISO(14));
   const [to, setTo] = useState(todayISO());
   const [groupBy, setGroupBy] = useState<UsageGroupBy>("day");
-  const [query, setQuery] = useState({ from, to, group_by: groupBy });
 
   const usageQuery = useQuery({
-    queryKey: ["usage", mode, query],
-    queryFn: () => client.usage(query),
+    queryKey: ["usage", mode, from, to, groupBy],
+    queryFn: () => client.usage({ dateFrom: from, dateTo: to, group_by: groupBy }),
+    placeholderData: (prev) => prev, // 换查询条件时保留旧图，避免整页闪加载态
   });
 
-  const apply = () => setQuery({ from, to, group_by: groupBy });
+  const items = usageQuery.data?.items ?? [];
+  const totalRuns = items.reduce((n, it) => n + it.runs, 0);
+  const totalTokens = items.reduce((n, it) => n + it.input_tokens + it.output_tokens, 0);
+  const totalCost = items.reduce((n, it) => n + it.cost_usd, 0);
 
   return (
     <div className="mx-auto max-w-4xl space-y-4 p-4">
@@ -48,8 +52,25 @@ export function UsagePage() {
             </Button>
           ))}
         </div>
-        <Button onClick={apply}>{copy.usage.query}</Button>
+        {usageQuery.isFetching ? <span className="text-xs text-zinc-500">{copy.state.loading}</span> : null}
       </Card>
+
+      {!usageQuery.isPending && !usageQuery.isError && items.length > 0 ? (
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="p-3 text-center">
+            <div className="text-xs text-zinc-500">{copy.usage.totalRuns}</div>
+            <div className="mt-1 text-lg font-semibold text-zinc-100">{totalRuns}</div>
+          </Card>
+          <Card className="p-3 text-center">
+            <div className="text-xs text-zinc-500">{copy.usage.totalTokens}</div>
+            <div className="mt-1 text-lg font-semibold text-zinc-100">{formatTokens(totalTokens)}</div>
+          </Card>
+          <Card className="p-3 text-center">
+            <div className="text-xs text-zinc-500">{copy.usage.totalCost}</div>
+            <div className="mt-1 text-lg font-semibold text-zinc-100">{formatCost(totalCost)}</div>
+          </Card>
+        </div>
+      ) : null}
 
       {usageQuery.isPending ? (
         <LoadingState />
@@ -57,10 +78,10 @@ export function UsagePage() {
         <ErrorState message={usageQuery.error.message} onRetry={() => void usageQuery.refetch()} />
       ) : (
         <Card className="p-4">
-          {query.group_by === "day" ? (
-            <UsageByDayChart items={usageQuery.data.items} />
+          {groupBy === "day" ? (
+            <UsageByDayChart items={items} />
           ) : (
-            <UsageByModelChart items={usageQuery.data.items} />
+            <UsageByModelChart items={items} />
           )}
         </Card>
       )}

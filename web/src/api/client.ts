@@ -1,12 +1,14 @@
 /**
  * 真实后端客户端：fetch 封装（Bearer 注入、错误信封 → 异常、401/403 清 key 跳登录）。
- * /v1 端点形状见 docs/api-contract.md §2。
+ * 端点形状对齐 main 后端实现（/openapi.json 有快照守护）。
  */
 
 import type {
+  AdminStats,
   ApiKeyInfo,
   CreatedKey,
   HealthResponse,
+  Project,
   ReadyResponse,
   RunInfo,
   SessionInfo,
@@ -91,15 +93,16 @@ export function createRealClient(opts: RealClientOptions) {
         body: JSON.stringify(input),
       }),
     getSession: (id: string) => request<SessionInfo>(`/v1/sessions/${id}`, opts),
-    listMessages: (sessionId: string, q: { limit?: number; before?: number } = {}) => {
+    listMessages: (sessionId: string, q: { limit?: number; beforeSeq?: number } = {}) => {
       const params = new URLSearchParams();
       if (q.limit) params.set("limit", String(q.limit));
-      if (q.before) params.set("before", String(q.before));
+      if (q.beforeSeq) params.set("before_seq", String(q.beforeSeq));
       const qs = params.toString();
-      return request<SessionMessage[]>(
+      // 后端返回 MessagePage{items, has_more}；控制台一次取 limit 内的全量，展开为有序数组
+      return request<{ items: SessionMessage[]; has_more: boolean }>(
         `/v1/sessions/${sessionId}/messages${qs ? `?${qs}` : ""}`,
         opts,
-      );
+      ).then((page) => page.items);
     },
     createRun: (sessionId: string, input: { input: string }) =>
       request<{ run_id: string }>(`/v1/sessions/${sessionId}/runs`, opts, {
@@ -109,22 +112,29 @@ export function createRealClient(opts: RealClientOptions) {
     getRun: (runId: string) => request<RunInfo>(`/v1/runs/${runId}`, opts),
     cancelRun: (runId: string) =>
       request<RunInfo>(`/v1/runs/${runId}/cancel`, opts, { method: "POST" }),
-    listKeys: () => request<ApiKeyInfo[]>("/v1/admin/keys", opts),
-    createKey: (name: string | null) =>
-      request<CreatedKey>("/v1/admin/keys", opts, {
+    listProjects: () => request<Project[]>("/v1/admin/projects", opts),
+    createProject: (name: string) =>
+      request<Project>("/v1/admin/projects", opts, {
         method: "POST",
         body: JSON.stringify({ name }),
       }),
+    listKeys: () => request<ApiKeyInfo[]>("/v1/admin/keys", opts),
+    createKey: (projectId: string, name: string | null) =>
+      request<CreatedKey>("/v1/admin/keys", opts, {
+        method: "POST",
+        body: JSON.stringify({ project_id: projectId, name }),
+      }),
     revokeKey: (keyId: string) =>
-      request<void>(`/v1/admin/keys/${keyId}`, opts, { method: "DELETE" }),
-    usage: (q: { from: string; to: string; group_by: UsageGroupBy }) => {
+      request<ApiKeyInfo>(`/v1/admin/keys/${keyId}/revoke`, opts, { method: "POST" }),
+    usage: (q: { dateFrom: string; dateTo: string; group_by: UsageGroupBy }) => {
       const params = new URLSearchParams({
-        from: q.from,
-        to: q.to,
         group_by: q.group_by,
+        date_from: q.dateFrom,
+        date_to: q.dateTo,
       });
       return request<UsageResponse>(`/v1/usage?${params.toString()}`, opts);
     },
+    adminStats: () => request<AdminStats>("/v1/admin/stats", opts),
     health: () => request<HealthResponse>("/healthz", opts),
     ready: () => request<ReadyResponse>("/readyz", opts),
   };
@@ -134,4 +144,3 @@ export type RealClient = ReturnType<typeof createRealClient>;
 
 /** SSE 订阅复用 sse/run-stream（见该文件；单独导出便于 mock 替换）。 */
 export { streamRunEvents } from "../sse/run-stream";
-export type { RunStreamEvent } from "./types";

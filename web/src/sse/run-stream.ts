@@ -75,8 +75,10 @@ export function toRunStreamEvent(msg: RawSSEMessage): RunStreamEvent | null {
   try {
     const payload = JSON.parse(msg.data) as Record<string, unknown>;
     const type = msg.event as StreamEventName;
-    if (typeof payload["seq"] !== "number") return null;
-    return { type, ...(payload as object) } as RunStreamEvent;
+    // seq 优先取 data 内字段（旧后端）；main 后端按 SSE 规范放在 id: 字段
+    const seq = typeof payload["seq"] === "number" ? payload["seq"] : Number(msg.id);
+    if (!Number.isInteger(seq) || seq < 0) return null;
+    return { type, seq, ...(payload as object) } as RunStreamEvent;
   } catch {
     return null;
   }

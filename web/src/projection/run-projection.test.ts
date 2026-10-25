@@ -123,6 +123,19 @@ describe("run-projection 工具回路", () => {
     const last = state.items[state.items.length - 1];
     expect(last?.kind === "assistant" && last.streaming).toBe(false);
   });
+
+  it("run.cancelled 收敛为取消态并关闭流式光标（保留已生成部分）", () => {
+    const state = run([
+      START,
+      { type: "message.delta", seq: 2, delta: "生成到一半" },
+      { type: "run.cancelled", seq: 3, run_id: "r_1", reason: "cancelled" },
+    ]);
+    expect(state.phase).toBe("cancelled");
+    expect(state.error).toBeNull();
+    const last = state.items[state.items.length - 1];
+    expect(last?.kind === "assistant" && last.streaming).toBe(false);
+    expect(last?.kind === "assistant" && last.text).toBe("生成到一半");
+  });
 });
 
 describe("historyToItems 历史重建", () => {

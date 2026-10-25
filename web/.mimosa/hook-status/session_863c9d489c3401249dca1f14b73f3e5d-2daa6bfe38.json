@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "mimosa-hook-status/v1",
+  "recordedAt": "2026-10-24T13:36:48.662Z",
+  "sessionId": "session_863c9d489c3401249dca1f14b73f3e5d",
+  "event": "PostToolUse",
+  "toolName": "Edit",
+  "file": "D:\\re-nano-agent\\src\\agentd\\main.py",
+  "outcome": "inconclusive",
+  "coverage": "partial",
+  "findingCount": 0,
+  "durationMs": 40,
+  "hostState": "hook_complete",
+  "reportHint": ".mimosa/reports/"
+}

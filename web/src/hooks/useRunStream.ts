@@ -2,11 +2,12 @@
  * useRunStream：Playground 的流式状态机（web-architecture §3——不进全局 store）。
  *
  * 职责：send(text) → createRun → streamRunEvents → 投影累积 → 终态；
- * cancel() 中止流并调用取消端点。状态本体是 RunProjection（纯函数投影），
- * 这里只做异步编排，不做业务计算。
+ * cancel() 中止流、本地收敛为 cancelled 终态并调用取消端点。
+ * 状态本体是 RunProjection（纯函数投影），这里只做异步编排，不做业务计算。
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ApiRequestError } from "../api/client";
 import type { ApiClient } from "../api";
 import {
   applyEvent,
@@ -58,13 +59,14 @@ export function useRunStream(client: ApiClient, sessionId: string | null): UseRu
         }
       } catch (err) {
         if (!controller.signal.aborted) {
+          const api = err instanceof ApiRequestError ? err : null;
           setProjection((prev) => ({
             ...prev,
             phase: "failed",
             error: {
-              code: "network_error",
-              message: err instanceof Error ? err.message : String(err),
-              retryable: true,
+              code: api?.code ?? "network_error",
+              message: api?.message ?? (err instanceof Error ? err.message : String(err)),
+              retryable: api?.retryable ?? true,
             },
           }));
         }
@@ -78,6 +80,10 @@ export function useRunStream(client: ApiClient, sessionId: string | null): UseRu
 
   const cancel = useCallback(async () => {
     abortRef.current?.abort();
+    // 本地先收敛为 cancelled 终态（停止光标闪烁）；服务端随后落 run.cancelled
+    setProjection((prev) =>
+      prev.phase === "streaming" || prev.phase === "idle" ? { ...prev, phase: "cancelled" } : prev,
+    );
     const runId = runIdRef.current;
     if (runId) {
       try {

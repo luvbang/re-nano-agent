@@ -60,11 +60,22 @@ describe("toRunStreamEvent", () => {
     expect(toRunStreamEvent({ data: "{}" })).toBeNull();
   });
 
+  it("seq 不在 data 里时回落到 SSE id: 字段（main 后端格式）", () => {
+    const ev = toRunStreamEvent({ event: "message.delta", data: '{"delta":"你"}', id: "2" });
+    expect(ev).toEqual({ type: "message.delta", seq: 2, delta: "你" });
+    // data 内的 seq 优先于 id
+    const ev2 = toRunStreamEvent({ event: "message.delta", data: '{"seq":7,"delta":"好"}', id: "2" });
+    expect(ev2?.seq).toBe(7);
+    // id 不是数字且 data 无 seq → null
+    expect(toRunStreamEvent({ event: "message.delta", data: '{"delta":"x"}', id: "abc" })).toBeNull();
+  });
+
   it("契约事件全部可还原", () => {
     const cases = [
       { event: "run.started", data: '{"seq":1,"run_id":"r","session_id":"s"}' },
       { event: "tool.started", data: '{"seq":3,"tool_call_id":"t","name":"echo","args":{}}' },
       { event: "run.failed", data: '{"seq":8,"error":{"code":"timeout","message":"t","retryable":true}}' },
+      { event: "run.cancelled", data: '{"seq":9,"run_id":"r","reason":"cancelled"}' },
     ];
     for (const c of cases) {
       expect(toRunStreamEvent(c)).not.toBeNull();

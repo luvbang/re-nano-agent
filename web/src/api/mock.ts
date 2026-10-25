@@ -1,15 +1,18 @@
 /**
- * 离线演示客户端：M3 的 /v1 端点落地前的全功能 mock 后端
+ * 离线演示客户端：后端未部署时的全功能 mock 后端
  * （web-architecture §7“后端先行的假数据”在纯前端侧的等价物）。
  *
  * 数据在内存中（标签页刷新即重置）；事件流按契约语义脚本化回放，
  * 含工具调用回路、逐字 delta 与 message.completed 全文覆盖。
+ * 接口与真实客户端完全一致（api/index.ts 的 ApiClient）。
  */
 
 import type {
+  AdminStats,
   ApiKeyInfo,
   CreatedKey,
   HealthResponse,
+  Project,
   ReadyResponse,
   RunInfo,
   RunStreamEvent,
@@ -30,6 +33,7 @@ function nowISO(): string {
 }
 
 interface DemoState {
+  projects: Project[];
   sessions: SessionInfo[];
   messages: Map<string, SessionMessage[]>;
   keys: ApiKeyInfo[];
@@ -37,19 +41,24 @@ interface DemoState {
 }
 
 function seed(): DemoState {
+  const p1: Project = {
+    id: "p_demo_main",
+    name: "默认项目",
+    created_at: new Date(Date.now() - 86_400_000 * 30).toISOString(),
+  };
   const s1: SessionInfo = {
     id: "s_demo_alpha",
+    project_id: p1.id,
     external_user_id: "u_1024",
     title: "部署排障",
-    metadata: {},
     created_at: new Date(Date.now() - 86_400_000 * 2).toISOString(),
     updated_at: new Date(Date.now() - 86_400_000).toISOString(),
   };
   const s2: SessionInfo = {
     id: "s_demo_beta",
+    project_id: p1.id,
     external_user_id: null,
     title: "文档问答",
-    metadata: {},
     created_at: new Date(Date.now() - 86_400_000).toISOString(),
     updated_at: new Date(Date.now() - 3_600_000).toISOString(),
   };
@@ -95,16 +104,23 @@ function seed(): DemoState {
   ];
   const keys: ApiKeyInfo[] = [
     {
-      id: "k_demo_1", key_prefix: "agd_demo1", name: "playground 集成", scopes: "core",
-      rate_limit_per_min: 60, revoked_at: null, created_at: new Date(Date.now() - 86_400_000 * 7).toISOString(),
+      id: "k_demo_1", project_id: p1.id, key_prefix: "agd_demo1", name: "playground 集成",
+      scopes: "core", rate_limit_per_min: 60, revoked_at: null,
+      created_at: new Date(Date.now() - 86_400_000 * 7).toISOString(),
     },
     {
-      id: "k_demo_2", key_prefix: "agd_demo2", name: "CI 冒烟", scopes: "core",
-      rate_limit_per_min: 10, revoked_at: null,
+      id: "k_demo_2", project_id: p1.id, key_prefix: "agd_demo2", name: "CI 冒烟",
+      scopes: "core", rate_limit_per_min: 10, revoked_at: null,
       created_at: new Date(Date.now() - 86_400_000 * 2).toISOString(),
     },
   ];
-  return { sessions: [s1, s2], messages: new Map([[s1.id, msgs1], [s2.id, msgs2]]), keys, runs: new Map() };
+  return {
+    projects: [p1],
+    sessions: [s1, s2],
+    messages: new Map([[s1.id, msgs1], [s2.id, msgs2]]),
+    keys,
+    runs: new Map(),
+  };
 }
 
 const state: DemoState = seed();
@@ -137,9 +153,9 @@ export function createDemoClient() {
       await delay(60);
       const s: SessionInfo = {
         id: nextId("s"),
+        project_id: state.projects[0]?.id ?? "p_demo_main",
         external_user_id: input.external_user_id ?? null,
         title: input.title ?? null,
-        metadata: {},
         created_at: nowISO(),
         updated_at: nowISO(),
       };
@@ -154,11 +170,11 @@ export function createDemoClient() {
     },
     async listMessages(
       sessionId: string,
-      q: { limit?: number; before?: number } = {},
+      q: { limit?: number; beforeSeq?: number } = {},
     ): Promise<SessionMessage[]> {
       await delay(60);
       const all = state.messages.get(sessionId) ?? [];
-      const filtered = q.before ? all.filter((m) => m.seq < q.before!) : all;
+      const filtered = q.beforeSeq ? all.filter((m) => m.seq < q.beforeSeq!) : all;
       return filtered.slice(-(q.limit ?? 100));
     },
     async createRun(sessionId: string, input: { input: string }): Promise<{ run_id: string }> {
@@ -187,15 +203,28 @@ export function createDemoClient() {
       if (run) run.status = "cancelled";
       return this.getRun(runId);
     },
+    async listProjects(): Promise<Project[]> {
+      await delay(60);
+      return [...state.projects];
+    },
+    async createProject(name: string): Promise<Project> {
+      await delay(80);
+      const p: Project = { id: nextId("p"), name, created_at: nowISO() };
+      state.projects.push(p);
+      return p;
+    },
     async listKeys(): Promise<ApiKeyInfo[]> {
       await delay(80);
       return [...state.keys];
     },
-    async createKey(name: string | null): Promise<CreatedKey> {
+    async createKey(projectId: string, name: string | null): Promise<CreatedKey> {
       await delay(80);
+      const project = state.projects.find((p) => p.id === projectId);
+      if (!project) throw new Error("not_found");
       const secret = `agd_${Math.random().toString(36).slice(2, 22)}`;
       const key: ApiKeyInfo = {
         id: nextId("k"),
+        project_id: projectId,
         key_prefix: secret.slice(0, 8),
         name,
         scopes: "core",
@@ -204,23 +233,35 @@ export function createDemoClient() {
         created_at: nowISO(),
       };
       state.keys.unshift(key);
-      return { key, secret };
+      return { key: secret, detail: key };
     },
-    async revokeKey(keyId: string): Promise<void> {
+    async revokeKey(keyId: string): Promise<ApiKeyInfo> {
       await delay(60);
       const k = state.keys.find((x) => x.id === keyId);
-      if (k) k.revoked_at = nowISO();
+      if (!k) throw new Error("not_found");
+      k.revoked_at = nowISO();
+      return k;
     },
-    async usage(q: { from: string; to: string; group_by: UsageGroupBy }): Promise<UsageResponse> {
+    async usage(q: { dateFrom: string; dateTo: string; group_by: UsageGroupBy }): Promise<UsageResponse> {
       await delay(120);
       const items =
         q.group_by === "day"
-          ? buildDaily(q.from, q.to)
+          ? buildDaily(q.dateFrom, q.dateTo)
           : [
-              { group: "gpt-4o-mini", runs: 61, input_tokens: 412_000, output_tokens: 96_000 },
-              { group: "demo-model", runs: 37, input_tokens: 128_000, output_tokens: 51_000 },
+              { bucket: "gpt-4o-mini", runs: 61, input_tokens: 412_000, output_tokens: 96_000, cost_usd: 0.184 },
+              { bucket: "demo-model", runs: 37, input_tokens: 128_000, output_tokens: 51_000, cost_usd: 0.061 },
             ];
-      return { from: q.from, to: q.to, group_by: q.group_by, items };
+      return { group_by: q.group_by, items };
+    },
+    async adminStats(): Promise<AdminStats> {
+      await delay(80);
+      return {
+        runs_by_status: { completed: 86, failed: 3, cancelled: 2, running: 1 },
+        sessions: state.sessions.length,
+        usage: { records: 98, input_tokens: 540_000, output_tokens: 147_000, cost_usd: 0.245 },
+        db_size_bytes: 1_572_864,
+        workspace_root: "（演示模式）",
+      };
     },
     async health(): Promise<HealthResponse> {
       return { status: "ok", version: "0.1.0", uptime_s: 36_612 };
@@ -328,8 +369,11 @@ function chunkText(text: string): string[] {
   return chunks;
 }
 
-function buildDaily(from: string, to: string): { group: string; runs: number; input_tokens: number; output_tokens: number }[] {
-  const items: { group: string; runs: number; input_tokens: number; output_tokens: number }[] = [];
+function buildDaily(
+  from: string,
+  to: string,
+): { bucket: string; runs: number; input_tokens: number; output_tokens: number; cost_usd: number }[] {
+  const items: { bucket: string; runs: number; input_tokens: number; output_tokens: number; cost_usd: number }[] = [];
   const start = new Date(`${from}T00:00:00Z`).getTime();
   const end = new Date(`${to}T00:00:00Z`).getTime();
   if (Number.isNaN(start) || Number.isNaN(end)) return items;
@@ -337,11 +381,14 @@ function buildDaily(from: string, to: string): { group: string; runs: number; in
     const day = new Date(t).toISOString().slice(0, 10);
     // 确定性伪随机：让图表每天不一样但刷新不变
     const seed = Number(t / 86_400_000) % 13;
+    const input = 8_000 + seed * 4_300;
+    const output = 2_100 + seed * 1_050;
     items.push({
-      group: day,
+      bucket: day,
       runs: 2 + ((seed * 7) % 11),
-      input_tokens: 8_000 + seed * 4_300,
-      output_tokens: 2_100 + seed * 1_050,
+      input_tokens: input,
+      output_tokens: output,
+      cost_usd: Math.round(((input * 0.15 + output * 0.6) / 1_000_000) * 1e6) / 1e6,
     });
   }
   return items;

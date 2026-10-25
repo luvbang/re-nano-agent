@@ -22,7 +22,7 @@ export type ChatItem =
   | { kind: "user"; text: string }
   | { kind: "assistant"; text: string; streaming: boolean; tools: ToolCallView[] };
 
-export type RunPhase = "idle" | "streaming" | "completed" | "failed";
+export type RunPhase = "idle" | "streaming" | "completed" | "failed" | "cancelled";
 
 export interface RunProjection {
   phase: RunPhase;
@@ -135,6 +135,8 @@ export function applyEvent(state: RunProjection, ev: RunStreamEvent): RunProject
       };
     case "run.failed":
       return { ...next, phase: "failed", error: ev.error, items: closeAssistant(next.items) };
+    case "run.cancelled":
+      return { ...next, phase: "cancelled", items: closeAssistant(next.items) };
   }
 }
 
