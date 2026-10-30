@@ -7,7 +7,8 @@
  */
 
 import { lazy, Suspense, type ReactElement } from "react";
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Layout } from "./components/Layout";
 import { LoadingState } from "./components/StateViews";
 import { useAdminKey } from "./hooks/useAdminKey";
@@ -27,10 +28,16 @@ const StatusPage = lazy(() =>
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const { apiKey } = useAdminKey();
+  const { pathname } = useLocation();
   if (!apiKey) return <Navigate to="/login" replace />;
   return (
     <Layout>
-      <Suspense fallback={<LoadingState />}>{children}</Suspense>
+      {/* 边界在 Layout 内部、Suspense 外部：页面崩溃只换掉内容区，侧栏与导航
+          仍可点；换页时 resetKey 变化会自动恢复。包住 Suspense 也顺带兜住
+          懒加载 chunk 拉取失败（弱网下比渲染异常更常见）。 */}
+      <ErrorBoundary resetKey={pathname}>
+        <Suspense fallback={<LoadingState />}>{children}</Suspense>
+      </ErrorBoundary>
     </Layout>
   );
 }

@@ -4,10 +4,11 @@
  * 草稿话题：无会话时发送首条消息自动建会话（标题取消息），免手动「新会话」。
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router";
 import { useAdminKey } from "../hooks/useAdminKey";
+import { consumePendingComposerFocus } from "../hooks/useGlobalShortcuts";
 import { useRunStream } from "../hooks/useRunStream";
 import { historyToItems, type ChatItem } from "../projection/run-projection";
 import { ChatMessageView } from "../components/ChatMessage";
@@ -100,6 +101,14 @@ export function PlaygroundPage() {
       setSessionId(sessionsQuery.data[0]!.id);
     }
   }, [urlSession, sessionId, sessionsQuery.data, reset]);
+
+  // 从别的页面按 `/` 会先导航到这里；composer 此刻才挂载，兑现那次聚焦请求。
+  // 放在 layout effect 里：等 DOM 提交后再 focus，避免被后续渲染抢走焦点。
+  // 未绑定项目 Key 时 composer 还没渲染，先保留请求，绑定后自然兑现。
+  useLayoutEffect(() => {
+    if (pgClient === null) return;
+    consumePendingComposerFocus();
+  }, [pgClient]);
 
   const sessionTitle = useMemo(
     () => sessionsQuery.data?.find((s) => s.id === sessionId)?.title ?? null,
@@ -293,6 +302,9 @@ export function PlaygroundPage() {
         >
           <textarea
             ref={composerRef}
+            // 全局 `/` 快捷键按此标记查找焦点目标（Playground 是懒加载路由，
+            // 从 Layout 传 ref 会穿透 Suspense，见 hooks/useGlobalShortcuts）
+            data-composer=""
             value={draft}
             rows={1}
             placeholder={copy.playground.inputPlaceholder}

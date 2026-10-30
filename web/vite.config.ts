@@ -18,7 +18,10 @@ export default defineConfig({
     chunkSizeWarningLimit: 280,
   },
   test: {
+    // 仍用 node 环境（不引 jsdom）：本项目把可测逻辑抽成纯函数/纯类，
+    // 组件测试只做渲染树的静态断言。.tsx 一并纳入，组件测试才不用为了
+    // 后缀把 JSX 改写成 createElement。
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
   },
 });

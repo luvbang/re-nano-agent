@@ -10,10 +10,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NavLink, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAdminKey } from "../hooks/useAdminKey";
+import { requestComposerFocus, useGlobalShortcuts } from "../hooks/useGlobalShortcuts";
 import { copy } from "../lib/copy";
 import { Badge, Button } from "./ui";
 import { MapleMark, MagnifierIcon, MenuIcon } from "./icons";
 import { TopicSearchDialog } from "./TopicSearchDialog";
+import { useToast } from "./Toast";
 
 const WIDTH_STORAGE = "agentd.sidebarWidth";
 const MIN_W = 208;
@@ -184,6 +186,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [searchOpen, setSearchOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const folded = useFolded();
@@ -191,6 +194,16 @@ export function Layout({ children }: { children: ReactNode }) {
 
   const inPlayground = location.pathname === "/playground";
   const activeSession = inPlayground ? searchParams.get("session") : null;
+
+  // Ctrl/⌘+K 开话题搜索；`/` 聚焦 composer（不在对话页时先导航过去，
+  // 聚焦请求由 Playground 挂载时兑现）
+  useGlobalShortcuts({
+    onOpenSearch: () => setSearchOpen(true),
+    onFocusComposer: () => {
+      if (!inPlayground) navigate("/playground");
+      requestComposerFocus();
+    },
+  });
 
   const sessionsQuery = useQuery({
     queryKey: ["sidebar-sessions", mode, playgroundKey],
@@ -217,8 +230,9 @@ export function Layout({ children }: { children: ReactNode }) {
     try {
       await pgClient.renameSession(id, title);
       refreshSessions();
+      toast.success(copy.toast.renamed);
     } catch (e) {
-      window.alert(copy.sidebar.renameFailed(e instanceof Error ? e.message : String(e)));
+      toast.error(copy.toast.renameFailed(e instanceof Error ? e.message : String(e)));
     }
   };
 
@@ -228,9 +242,10 @@ export function Layout({ children }: { children: ReactNode }) {
     try {
       await pgClient.deleteSession(id);
       refreshSessions();
+      toast.success(copy.toast.deleted);
       if (id === activeSession) navigate("/playground");
     } catch (e) {
-      window.alert(copy.sidebar.deleteFailed(e instanceof Error ? e.message : String(e)));
+      toast.error(copy.toast.deleteFailed(e instanceof Error ? e.message : String(e)));
     }
   };
 
@@ -254,7 +269,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
         <button
           type="button"
-          title={copy.sidebar.searchTopics}
+          title={copy.shortcuts.searchTitle}
           aria-label={copy.sidebar.searchTopics}
           onClick={() => setSearchOpen(true)}
           className="flex h-7 w-7 items-center justify-center rounded-md text-mut transition-colors hover:bg-raised hover:text-ink"
@@ -359,7 +374,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </span>
           <button
             type="button"
-            title={copy.sidebar.searchTopics}
+            title={copy.shortcuts.searchTitle}
             aria-label={copy.sidebar.searchTopics}
             onClick={() => setSearchOpen(true)}
             className="flex h-8 w-8 items-center justify-center rounded-md text-mut transition-colors hover:bg-raised hover:text-ink"

@@ -147,7 +147,10 @@ export function createDemoClient() {
 
     async listSessions(limit = 50): Promise<SessionInfo[]> {
       await delay(80);
-      return state.sessions.slice(0, limit);
+      // 返回浅拷贝而不是 state 里的对象引用：renameSession/deleteSession 会原地改
+      // state，若列表与缓存共享同一批对象，React Query 的结构共享会判定"数据没变"
+      // 而跳过重渲染——重命名后侧栏标题不更新就是这么来的。
+      return state.sessions.slice(0, limit).map((s) => ({ ...s }));
     },
     async createSession(input: { title?: string; external_user_id?: string }): Promise<SessionInfo> {
       await delay(60);

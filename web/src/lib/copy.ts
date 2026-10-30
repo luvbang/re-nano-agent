@@ -26,8 +26,6 @@ export const copy = {
     rename: "重命名",
     delete: "删除",
     deleteConfirm: "删除该会话？消息与运行记录将一并删除。",
-    deleteFailed: (message: string) => `删除失败：${message}`,
-    renameFailed: (message: string) => `重命名失败：${message}`,
     untitled: "（无标题会话）",
     emptyTopics: "还没有话题，点上方「新话题」开始",
     bindKeyHint: "对话功能需要项目 Key",
@@ -174,6 +172,26 @@ export const copy = {
     empty: "没有数据",
     demoBadge: "离线演示",
     demoBanner: "当前为离线演示模式：数据为内置示例，重启后重置。",
+  },
+  errorBoundary: {
+    title: "这个页面出错了",
+    hint: "页面渲染时抛了异常。可以重试；如果一直失败，侧栏的其它页面仍然可用。",
+    unknown: "未知错误",
+    backToPlayground: "回到对话",
+  },
+  toast: {
+    dismiss: "关闭提示",
+    renamed: "会话已重命名",
+    renameFailed: (message: string) => `重命名失败：${message}`,
+    deleted: "会话已删除",
+    deleteFailed: (message: string) => `删除失败：${message}`,
+    copyFailed: "复制失败",
+  },
+  shortcuts: {
+    // 快捷键不写在界面上（data-terminal 基调不放常驻提示条），只挂 title：
+    // 需要的人悬停即可发现，不需要的人不被占用视觉
+    searchTitle: "搜索话题（Ctrl+K）",
+    composerTitle: "输入消息（按 / 聚焦）",
   },
   errors: {
     network: "无法连接后端，请确认服务已启动",

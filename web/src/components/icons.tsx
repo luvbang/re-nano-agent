@@ -42,6 +42,40 @@ export function CheckIcon({ className = "h-3.5 w-3.5" }: { className?: string })
   );
 }
 
+export function AlertIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`${className} shrink-0`}
+      aria-hidden="true"
+    >
+      <path d="M12 3.5 21 20H3z" />
+      <path d="M12 9.5v4.5M12 17h.01" />
+    </svg>
+  );
+}
+
+export function CloseIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      className={`${className} shrink-0`}
+      aria-hidden="true"
+    >
+      <path d="m6 6 12 12M18 6 6 18" />
+    </svg>
+  );
+}
+
 export function MenuIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg
