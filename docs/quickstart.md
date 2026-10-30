@@ -76,8 +76,11 @@ curl -N -sS "$BASE/v1/runs/$RID/events" -H "Authorization: Bearer $KEY"
 | 取消 run | `client.cancel_run(run_id)`（终态后取消会 409） |
 | 断线续传 | `client.stream()` 自动带 Last-Event-ID 重连；增量不重放，以 `message.completed` 为准 |
 | 用量 | `client.usage(group_by="day"或"model", date_from="2026-10-01")` |
+| 会话管理 | `client.rename_session(sid, title="新名字")` 改标题；`client.delete_session(sid)` 删除（204，级联清消息与 runs，用量记录保留） |
+| 选模型 | `POST /v1/sessions/{id}/runs` 带 `{"model": "..."}`；先 `GET /v1/models` 查可用值，传了不认识的模型得 400 `invalid_request`。**SDK 的 `create_run()` 暂不支持 `model` 形参**，需要时直接发 HTTP |
 | 错误 | 类型化异常：`AuthenticationError` / `RateLimitError(retry_after_s)` / `ModelError`…；`retryable` 的自动重试 |
-| 工具 | 平台内置 echo/get_time/read_file/write_file/edit_file/list_dir/web_fetch；回答里 `tool.started/completed` 事件可见 |
+| 工具 | 平台内置 echo/get_time/read_file/write_file/edit_file/list_dir/web_fetch（平台还可挂 MCP 工具）；回答里 `tool.started/completed` 事件可见，`tool.completed` 带 `result` 输出预览 |
+| 长期记忆 | 仅 HTTP：`GET/POST /v1/memories`、`DELETE /v1/memories/{id}`（归档）；SDK 暂无对应方法 |
 
 ## 5. 排障
 
@@ -85,6 +88,7 @@ curl -N -sS "$BASE/v1/runs/$RID/events" -H "Authorization: Bearer $KEY"
 - `409 conflict`：同一 session 已有 run 在跑（per-session 串行），等它完成或换 session
 - `429 rate_limited`：带 `Retry-After` 秒数；SDK 自动退避重试
 - `502 model_error`：平台侧模型未配置或上游故障，可重试
+- `400 invalid_request` 且消息里有「未知模型」：`model` 与平台模型不一致，用 `GET /v1/models` 取可用值
 
 ## 接入计时（管理员填写）
 

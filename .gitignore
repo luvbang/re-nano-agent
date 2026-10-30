@@ -35,3 +35,15 @@ Thumbs.db
 # Mimosa 扫描器本地状态
 .mimosa/
 web/test-results/
+
+# 本地工具产物（不入库）：设计技能的前后对比截图与产物、Claude Code 的本地配置
+web/.taste-skill/
+.claude/
+
+# 临时校验脚本（不提交）
+web/scripts/.tmp-*.mjs
+web/scripts/.tmp-*.js
+
+# 构建产物（不入库）
+web/dist/
+web/dist-*/

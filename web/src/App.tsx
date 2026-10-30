@@ -1,19 +1,38 @@
-/** 路由与守卫：未登录一律重定向 /login（key 在 sessionStorage，关标签即失效）。 */
+/**
+ * 路由与守卫：未登录一律重定向 /login（key 在 sessionStorage，关标签即失效）。
+ *
+ * 首屏只带 登录页 / 布局 / Playground（默认落地页）；其余管理页按路由懒加载，
+ * 各自成 chunk（含占用最大的图表页），首屏不为它们付下载时间
+ * （体积预算见 docs/web-architecture.md §"规模预期"）。
+ */
 
+import { lazy, Suspense, type ReactElement } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import { Layout } from "./components/Layout";
+import { LoadingState } from "./components/StateViews";
 import { useAdminKey } from "./hooks/useAdminKey";
-import { KeysPage } from "./pages/KeysPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PlaygroundPage } from "./pages/PlaygroundPage";
-import { SessionsPage } from "./pages/SessionsPage";
-import { StatusPage } from "./pages/StatusPage";
-import { UsagePage } from "./pages/UsagePage";
 
-function RequireAuth({ children }: { children: React.ReactElement }) {
+// 懒加载页面的 Suspense 边界放在 Layout 内部：切页时侧栏/顶栏不闪，
+// fallback 复用统一的 LoadingState（与真数据加载态同一视觉）。
+const SessionsPage = lazy(() =>
+  import("./pages/SessionsPage").then((m) => ({ default: m.SessionsPage })),
+);
+const KeysPage = lazy(() => import("./pages/KeysPage").then((m) => ({ default: m.KeysPage })));
+const UsagePage = lazy(() => import("./pages/UsagePage").then((m) => ({ default: m.UsagePage })));
+const StatusPage = lazy(() =>
+  import("./pages/StatusPage").then((m) => ({ default: m.StatusPage })),
+);
+
+function RequireAuth({ children }: { children: ReactElement }) {
   const { apiKey } = useAdminKey();
   if (!apiKey) return <Navigate to="/login" replace />;
-  return <Layout>{children}</Layout>;
+  return (
+    <Layout>
+      <Suspense fallback={<LoadingState />}>{children}</Suspense>
+    </Layout>
+  );
 }
 
 export default function App() {

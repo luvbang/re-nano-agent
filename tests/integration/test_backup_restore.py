@@ -45,7 +45,12 @@ BASH = _find_git_bash()
 
 
 def run_script(script: str, **env_vars: str) -> subprocess.CompletedProcess[str]:
-    """bash -c 内联环境变量（WSL bash 不透传 Windows env/路径；CI Linux 同样适用）。"""
+    """bash -c 内联环境变量（WSL bash 不透传 Windows env/路径；CI Linux 同样适用）。
+
+    显式 `encoding="utf-8"`：脚本输出是 UTF-8，读取线程若按本机 locale（cp936/gbk）
+    解码会抛 UnicodeDecodeError，stdout/stderr 变成 None，断言随之炸掉——这里把解码
+    行为钉死，与 locale 无关。
+    """
     python_bin = Path(sys.executable).as_posix()
     if len(python_bin) > 1 and python_bin[1] == ":":
         # git-bash 直接 exec 用 MSYS 风格（D:/x → /d/x）更稳；Linux 上原样
@@ -56,6 +61,8 @@ def run_script(script: str, **env_vars: str) -> subprocess.CompletedProcess[str]
         [BASH, "-c", f"{assignments} bash {script}"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=60,
     )
 

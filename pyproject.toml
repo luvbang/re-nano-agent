@@ -35,6 +35,27 @@ agentd = "agentd.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentd"]
 
+# sdist 白名单：仓库里还有 web/（node_modules 数千文件）、.agents/、var/ 等运行产物，
+# 默认「整仓打包」会让 sdist 膨胀到 30MB+ 且把无关工具链带给下游。只打包可构建的最小集。
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/agentd",
+  "tests",
+  "sdk/agentd_client",
+  "pyproject.toml",
+  "README.md",
+  "LICENSE",
+  "CHANGELOG.md",
+  "uv.lock",
+]
+exclude = [
+  "**/__pycache__",
+  "**/*.pyc",
+  "**/.pytest_cache",
+  "**/.mypy_cache",
+  "**/.ruff_cache",
+]
+
 [tool.uv.workspace]
 members = ["sdk/agentd_client"]
 

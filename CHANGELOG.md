@@ -6,6 +6,9 @@
 
 ### Added（v0.2 进行中）
 
+- **模型选择贯通**（retro v0.2-4）：`POST /v1/sessions/{id}/runs` 新增请求级 `model` 字段，经 `AgentRunner` 传导到 `provider.chat(model=...)` 并落到 run 档与 usage 的 model 维度；未知模型 400 `invalid_request`（单模型配置期与 `AGENTD_LLM_MODEL` 比对）；fake provider 增加模型观测面；控制台 composer 枫叶 chip 选择器
+- **控制台重做**（retro v0.2-4，两线合流）：枫叶品牌化（主题/favicon/文案基建）、侧栏 Topics 工作台（重命名/删除/搜索弹窗/拖宽）、Playground 重写为 nanobot 工作台形态（草稿话题直发/自适应 composer/英雄空态）、项目 key 门控（未绑定时显示引导，修复管理员 key 401 触发全局登出）、消息 Markdown + 悬停复制
+- **视觉统一与移动端侧栏折叠**：六页面共用一套视觉语言，窄屏侧栏可折叠
 - **控制台完善·工具结果预览**（retro v0.2-4）：`tool.completed` SSE 事件增补
   `result` 字段（工具输出预览，线上 2000 字符封顶，契约只加不破）；控制台工具卡
   升级「参数 + 结果」两段式（文件工具带路径头，历史回放由 role=tool 消息补齐）
