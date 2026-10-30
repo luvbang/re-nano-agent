@@ -4,13 +4,14 @@
 
     client = Client(base_url="https://agent.example.com", api_key="agd_...")
     session = client.create_session(title="demo")
+    client.create_memory(content="用户偏好深色主题")
     run = client.create_run(session["id"], input="你好")
     for event in client.stream(run["run_id"]):
         if event.type == "message.delta":
             print(event.data["delta"], end="")
 """
 
-from agentd_client.core import DEFAULT_BASE_URL, AsyncClient, StreamEvent
+from agentd_client.core import DEFAULT_BASE_URL, AsyncClient, MemoryStatus, StreamEvent
 from agentd_client.errors import (
     AgentdError,
     AuthenticationError,
@@ -32,6 +33,7 @@ __all__ = [
     "AuthenticationError",
     "Client",
     "ConflictError",
+    "MemoryStatus",
     "ModelError",
     "NetworkError",
     "NotFoundError",

@@ -9,7 +9,43 @@ description = "Python SDK for the agentd platform (HTTP/SSE API)"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
+keywords = ["agentd", "sdk", "llm", "agent", "sse", "client"]
 dependencies = ["httpx>=0.27"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/luvbang/re-nano-agent"
+Repository = "https://github.com/luvbang/re-nano-agent"
+Documentation = "https://github.com/luvbang/re-nano-agent/blob/main/docs/sdk-guide.md"
+Issues = "https://github.com/luvbang/re-nano-agent/issues"
+Changelog = "https://github.com/luvbang/re-nano-agent/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentd_client"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/agentd_client",
+  "README.md",
+  "LICENSE",
+]
+exclude = [
+  "**/__pycache__",
+  "**/*.pyc",
+]
+# hatchling 会把最近的 .gitignore 无条件 force-include 进 sdist（不受 exclude 影响），
+# 所以包目录里放了一个 48 字节的最小 .gitignore，避免把仓库根那份 web/ 相关规则发给下游。
+# 同理关掉 vcs 规则解析，sdist 完全由上面的显式白名单决定。
+ignore-vcs = true

@@ -13,7 +13,7 @@ from typing import Any
 
 import httpx
 
-from agentd_client.core import AsyncClient, StreamEvent
+from agentd_client.core import AsyncClient, MemoryStatus, StreamEvent
 
 
 class _LoopThread:
@@ -101,6 +101,21 @@ class Client:
 
     def cancel_run(self, run_id: str) -> dict[str, Any]:
         result: dict[str, Any] = self._runner.run(self._async.cancel_run(run_id))
+        return result
+
+    # ---------- memories ----------
+
+    def list_memories(self, *, status: MemoryStatus | None = None,
+                      limit: int = 100) -> list[dict[str, Any]]:
+        raw: Any = self._runner.run(self._async.list_memories(status=status, limit=limit))
+        return list(raw)
+
+    def create_memory(self, *, content: str) -> dict[str, Any]:
+        result: dict[str, Any] = self._runner.run(self._async.create_memory(content=content))
+        return result
+
+    def archive_memory(self, memory_id: str) -> dict[str, Any]:
+        result: dict[str, Any] = self._runner.run(self._async.archive_memory(memory_id))
         return result
 
     def usage(self, *, group_by: str = "day", date_from: str | None = None,
