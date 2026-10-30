@@ -29,7 +29,18 @@
 
 ## 数据保留与删除
 
-默认全量保留。删除某 project 全部数据：备份一次 → `sqlite3 /data/agentd.db "DELETE FROM projects WHERE id='<pid>'"`（级联清 sessions/runs/messages/usage）→ 重启。v0.1.0 后补内置 purge 命令（技术债已登记）。
+默认全量保留。删除某 project 全部数据用内置命令（v0.2 起可用，替代手写 SQL）：
+
+```bash
+docker exec -it <app容器> python -m agentd.cli purge --project <pid>           # 只打印计划与各表行数
+docker exec -it <app容器> python -m agentd.cli purge --project <pid> --yes     # 真正执行
+```
+
+- 先跑 `deploy/backup.sh`；执行后**审计日志保留**（`project_id` 置空，不随 project 消失）。
+- 级联删除 sessions/runs/messages/run_events/tool_calls/usage_records/api_keys/memories（统计口径见 `ProjectRepository._CASCADE_COUNT_SQL`）。memories 的 `ON DELETE CASCADE` 由迁移 `004_memories_fk.sql` 补上（SQLite 不能 ALTER 外键，走重建表）。
+- **workspace 目录不删**：命令结束会提示手动清理 `workspace/<project_id>`（避免误删仍在用的文件）。
+- 退出码：0 成功 / 1 project 不存在 / 2 未加 `--yes`（只打了计划）。
+- 会话级删除走 `DELETE /v1/sessions/{id}`（级联清消息与 runs，**usage 记录保留**、`run_id` 置空，对账不丢账）。
 
 ## 升级 / 降级 / 回滚
 

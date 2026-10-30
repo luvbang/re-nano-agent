@@ -15,7 +15,7 @@
 - [x] API key 只存 sha256 + 前 12 位；明文仅创建时返回一次——`test_api_auth.py`
 - [x] 撤销立即生效（每请求实时查库）——`test_api_auth.py`
 - [x] 跨 project 资源一律 404 不泄漏存在性——sessions/runs 均有测试
-- [x] `AGENTD_ADMIN_KEY` 常量时间比较；admin scope 走 DB
+- [x] `AGENTD_ADMIN_API_KEY` 常量时间比较；admin scope 走 DB
 - [x] 日志脱敏：agd_/sk- key、Bearer、password/token/secret 赋值 → [REDACTED]——`test_audit_and_redaction.py`
 - [x] 审计：project/key/run/tool 全链路可查——`GET /v1/admin/audit`
 - [ ] `.env` 权限 0600（部署机）——待线上人工设置
@@ -26,7 +26,7 @@
 - [x] SSRF：私网/回环/CGNAT/链路本地（含 169.254.169.254）/组播/保留/ULA 拒绝；DNS 全地址校验；混合公私 IP 拒；逐跳重定向校验——`test_ssrf.py`
 - [x] shell 默认关闭；开启需 allowlist 前缀 + cwd 锁定 + 超时 kill + 并发信号量——`test_shell_tool.py`
 - [x] 工具结果 16k 截断 + 超限落盘（不进上下文）
-- [ ] DNS rebinding 残余窗口（校验与连接间）——登记为已知限制，v0.2 pinned transport
+- [ ] DNS rebinding 残余窗口（校验与连接间）——**v0.2 已清偿**：`security/pinned.py` 把校验阶段解析到的公网 IP 钉进连接层（TLS SNI/证书校验与 Host 头保持原主机名），`tests/security/test_pinned.py` 覆盖
 
 ## 数据与恢复
 

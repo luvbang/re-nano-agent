@@ -133,9 +133,9 @@ queued → running → completed | failed | cancelled | interrupted
 - 启动时把所有 `running` 改成 `interrupted`（崩溃恢复）。
 - `interrupted` 的 run 不可续跑；客户端发起新一轮 run 继续对话。
 
-## 5. 数据模型（SQLite，schema v1）
+## 5. 数据模型（SQLite，schema v1 + v0.2 增量）
 
-见 `src/agentd/storage/migrations/001_init.sql`，实体：
+见 `src/agentd/storage/migrations/001_init.sql`（另有 `002_idempotency.sql`、`003_memories.sql`），实体：
 
 ```sql
 projects(id, name, workspace_path, created_at)
@@ -148,6 +148,14 @@ tool_calls(id, run_id, tool_call_id, name, args_json, result_preview, status, du
 usage_records(id, project_id, run_id, model, input_tokens, output_tokens, cached_tokens, cost_usd, created_at)
 audit_logs(id, project_id, actor, action, target, detail_json, ip, created_at)
 schema_version(version, applied_at)
+```
+
+v0.2 增量表：
+
+```sql
+idempotency_keys(key, run_id, session_id, created_at)   -- 002：创建 run 的幂等键，5 分钟窗口
+memories(id, project_id, content, source_session_id, source_run_id, score, status, created_at, updated_at, last_seen_at)
+                                                        -- 003：project 作用域长期记忆；status=active/archived（软删）
 ```
 
 设计约束：

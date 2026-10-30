@@ -4,28 +4,11 @@
 
 ## [Unreleased]
 
-### Added（v0.2 进行中）
+> v0.2 进行中（D1–D4 已交付）：自 `v0.1.0-rc2` 起主干 33 个提交（`git log --first-parent
+> v0.1.0-rc2..HEAD`），按 Added / Changed / Fixed 归类；`chore(sync)` 定时快照、
+> 分支合流提交与扫描器状态忽略等仓库卫生项不单列。
 
-- **模型选择贯通**（retro v0.2-4）：`POST /v1/sessions/{id}/runs` 新增请求级 `model` 字段，经 `AgentRunner` 传导到 `provider.chat(model=...)` 并落到 run 档与 usage 的 model 维度；未知模型 400 `invalid_request`（单模型配置期与 `AGENTD_LLM_MODEL` 比对）；fake provider 增加模型观测面；控制台 composer 枫叶 chip 选择器
-- **控制台重做**（retro v0.2-4，两线合流）：枫叶品牌化（主题/favicon/文案基建）、侧栏 Topics 工作台（重命名/删除/搜索弹窗/拖宽）、Playground 重写为 nanobot 工作台形态（草稿话题直发/自适应 composer/英雄空态）、项目 key 门控（未绑定时显示引导，修复管理员 key 401 触发全局登出）、消息 Markdown + 悬停复制
-- **视觉统一与移动端侧栏折叠**：六页面共用一套视觉语言，窄屏侧栏可折叠
-- **控制台完善·工具结果预览**（retro v0.2-4）：`tool.completed` SSE 事件增补
-  `result` 字段（工具输出预览，线上 2000 字符封顶，契约只加不破）；控制台工具卡
-  升级「参数 + 结果」两段式（文件工具带路径头，历史回放由 role=tool 消息补齐）
-- **控制台完善·用量看板**（retro v0.2-4）：明细表（runs/输入/输出/费用 + 费用
-  占比条）与 CSV 导出（RFC 4180 转义 + BOM，Excel 直开）
-- **控制台完善·Playwright 冒烟进 CI**（retro v0.2-4）：demo 模式全离线全链路
-  （登录演示 → Playground 发送 → 工具卡结果预览 → 管理 4 页渲染）；
-  `cd web && npm run test:e2e`，CI 新增 smoke job
-- **会话重命名/删除**：`PATCH /v1/sessions/{id}`（改 title）/ `DELETE /v1/sessions/{id}`
-  （级联清消息与运行引用）+ SDK `rename_session/delete_session` + 控制台 Topics 工作台入口
-
-- **记忆与自动整理**（retro v0.2-3）：`memories` 表（迁移 003，project 作用域）+
-  `MemoryService`——写入精确去重（bump last_seen）、注入按 score/last_seen 预算内
-  并入 system（注入即确认刷新 last_seen）、run 成功后的旁路自动提取
-  （`AGENTD_MEMORY_EXTRACT_ENABLED`，默认关；失败退化为不产记忆，永不影响 run）、
-  `agentd dream` 规则版整理（同内容去重 + 超陈旧阈值归档）；`/v1/memories`
-  GET/POST/DELETE（归档幂等，跨 project 404），审计记 memory.created/archived
+### Added
 
 - **多 provider + 故障自动切换**（retro v0.2-2）：`AGENTD_LLM_PROVIDER` 支持
   `openai`（chat.completions）/ `responses`（OpenAI Responses API）/ `anthropic`
@@ -33,13 +16,91 @@
   配置备选链——主 provider 重试耗尽且未产出任何事件时整链切换（已产出 delta 不切换，
   与重试语义对齐，杜绝重复输出）；`providers/factory.py` 统一装配（向后兼容：仅配
   llm_api_key 等价旧行为）；respx fixture 全覆盖（文本/工具/usage/429/5xx/断流/error 事件）
-- **SSRF pinned transport**：web_fetch 把校验阶段解析到的公网 IP 钉进连接层
-  （`security/pinned.py`，TLS SNI/证书校验与 Host 头保持原主机名），消除
-  「校验时公网、连接时被 DNS rebinding 到内网」的 TOCTOU 窗口（M2 技术债清偿）
-
+- **SSRF pinned transport**（M2 技术债清偿）：web_fetch 把校验阶段解析到的公网 IP 钉进
+  连接层（`security/pinned.py`，TLS SNI/证书校验与 Host 头保持原主机名），消除
+  「校验时公网、连接时被 DNS rebinding 到内网」的 TOCTOU 窗口；`tests/security/test_pinned.py`
+- **记忆与自动整理**（retro v0.2-3）：`memories` 表（迁移 003，project 作用域）+
+  `MemoryService`——写入精确去重（同 project 同内容 bump last_seen）、注入按
+  score/last_seen 预算内并入 system（注入即确认刷新 last_seen）、run 成功后的旁路自动提取
+  （`AGENTD_MEMORY_EXTRACT_ENABLED`，默认关；失败退化为不产记忆，永不影响 run）、
+  `agentd dream` 规则版整理（同内容去重 + 超 `AGENTD_MEMORY_STALE_DAYS` 阈值归档）；
+  `/v1/memories` GET/POST/DELETE（归档幂等，跨 project 404），审计记 memory.created/archived
 - **MCP 工具支持**：`AGENTD_MCP_SERVERS`（JSON）挂接任意 MCP 服务器的工具——Streamable HTTP 握手（initialize/会话头/notifications）、`tools/list` 发现、`tools/call` 桥接（isError 映射工具错误）；单服务器故障跳过不影响启动；走统一工具管线（超时/审计/截断）。`docs/mcp.md`
+- **会话重命名/删除**：`PATCH /v1/sessions/{id}`（改 title，1–200 字符，空串 400）/
+  `DELETE /v1/sessions/{id}`（204，级联清消息、runs 与其事件，usage 记录保留、`run_id` 置空）
+  + SDK `rename_session/delete_session` + 控制台 Topics 工作台入口
+- **消息透出工具调用 wire**：`GET /v1/sessions/{id}/messages` 的每条消息新增 `tool_calls`
+  字段（assistant 的历史工具调用原样透出），控制台据此重建历史工具卡
+- **请求级模型选择**（retro v0.2-4）：`POST /v1/sessions/{id}/runs` 新增 `model` 字段，
+  经 `AgentRunner` 传导到 `provider.chat(model=...)` 并落到 run 档与 usage 的 model 维度；
+  未知模型 400 `invalid_request`（单模型配置期与 `AGENTD_LLM_MODEL` 比对）；fake provider
+  增加模型观测面；控制台 composer 枫叶 chip 选择器
+- **控制台·工具结果预览**（retro v0.2-4）：`tool.completed` SSE 事件增补 `result` 字段
+  （工具输出预览，工具管线已截 16k、事件序列化再封顶 2000 字符，超长追「已截断」标注，
+  契约只加不破）；控制台工具卡升级「参数 + 结果」两段式（历史回放由 role=tool 消息补齐）
+- **控制台·用量明细与 CSV 导出**（retro v0.2-4）：明细表（runs/输入/输出/费用 + 费用占比条）
+  与 CSV 导出（RFC 4180 转义 + UTF-8 BOM，Excel 直开）
+- **控制台·Playwright 冒烟进 CI**（retro v0.2-4）：demo 模式全离线全链路
+  （登录演示 → Project Key 门控 → 建 Key 绑定 → 发送 → 工具卡结果预览 → 管理 4 页渲染），
+  `web/e2e/smoke.spec.ts` 3 例；`cd web && npm run test:e2e`，CI 新增 `smoke` job
+- **控制台重做**（retro v0.2-4，两线合流）：枫叶品牌化（主题/favicon/文案基建）、
+  侧栏 Topics 工作台（重命名/删除、`TopicSearchDialog` 话题搜索、拖宽记忆宽度、
+  `MessageSearchDialog` 会话内消息搜索）、Playground 重写为 nanobot 工作台形态
+  （草稿话题直发/自适应 composer/英雄空态）、项目 Key 门控（未绑定时显示引导，
+  修复管理员 key 401 触发全局登出）、消息 Markdown 渲染 + 悬停复制
 - `agentd purge --project <id> [--yes]`：go-live 数据保留项——级联删除 project 数据、审计脱钩保留、无 --yes 只打印计划
-- OpenAPI 契约快照守护（`tests/fixtures/openapi.json`，变更须显式 --regen）
+- OpenAPI 契约快照守护（`tests/fixtures/openapi.json`，变更须显式 `--regen`）
+- **前端设计技能库**：`.agents/skills/design-taste-frontend/`（SKILL + 素材库 + eval），
+  供控制台视觉改造复用；配套 `.gitignore` 忽略 `.claude/`、`web/.taste-skill/` 本地产物
+
+### Changed
+
+- **控制台视觉统一与移动端侧栏折叠**：登录/对话/会话/Keys/用量/状态六页共用一套视觉语言与
+  设计 token；宽度 <1024px 时侧栏折叠为顶栏 + 全屏抽屉（可展开导航/话题/退出）
+- **bundle 瘦身**：`UsageChart` 由 recharts 改为手写 SVG（数据终端形态的双柱 + 细环 +
+  hover tooltip + 空态，几何与配色逐项对齐原渲染），gzip 由 258.8KB 降到约 155KB
+  （`cd web && npm run size` 可复现，预算 250KB）；新增 `web/scripts/check-bundle-size.mjs`
+  逐块累加口径的体积守卫，CI `web` job 增加 `npm run size` 门禁
+- **前端路由懒加载**：`App.tsx` 的会话/Keys/用量/状态页面改为 `lazy()` + `Suspense` 拆块
+- 文档收尾：`docs/web-architecture.md`、`docs/mcp.md`、README、api-reference、sdk-guide、
+  faq、quickstart 随实现同步；devlog/retro 记录 v0.2-2/两线合流与 v0.2-4 切片
+- 打包：`pyproject.toml` 为 sdist 增加白名单（`src/agentd`、`sdk/agentd_client`、`tests` 等），
+  避免整仓（含 `web/node_modules`、`.agents/`、`var/`）被打进 30MB+ 的包
+
+### Fixed
+
+- **MCP 工具与内置同名时启动崩溃**：`main.py` 装配 MCP 工具处只有一行注释说
+  「register 抛错则跳过」，实际没有 try——而 `ToolRegistry.register` 对重名直接
+  `raise ValueError`，于是一个 MCP 服务器只要暴露了 `read_file` 这类同名工具，
+  整个应用就起不来（`docs/mcp.md` 承诺的是「同名时内置优先」）。现补 try + 告警日志
+  `mcp.tool_skipped`，兑现文档承诺
+- **`web_fetch` / `shell` 未进入平台工具表**（真实缺陷）：`main.py` 只注册了
+  `BUILTIN_TOOLS` + 文件四件套 + MCP，`WebFetchTool` 从未被注册（仅测试里直接实例化），
+  `ShellTool` 只在 `agentd chat` 侧按开关注册——文档声称「平台内置 web_fetch」，走 HTTP API
+  的 run 却拿不到。现抽出 `tools/factory.py` 作为 main 与 cli 共用的唯一装配路径：
+  web_fetch 始终注册，shell 按 `AGENTD_RUN_SHELL_ENABLED` 注册
+- **`agentd purge` 遇到有记忆的 project 必然失败**：`memories.project_id` 外键缺
+  `ON DELETE CASCADE`，删 project 报 `FOREIGN KEY constraint failed`；补迁移
+  `004_memories_fk.sql`（SQLite 不支持 ALTER 外键，走重建表），并把 memories 纳入
+  `_CASCADE_COUNT_SQL` 的清理计划统计
+- **`POST /v1/memories` 全空白 content 返回 500**：schema 层只校验 `min_length=1`，
+  全空白落到服务层抛裸 `ValueError`；现于 `MemoryCreate` 做 `strip()` 校验，返回
+  400 `invalid_request` 并落库规范化后的值
+- **兜底 500 丢 `request_id`**：`_handle_unexpected` 在 `ServerErrorMiddleware` 层执行，
+  此时 `RequestIDMiddleware` 的 contextvar 已 reset，错误体 `request_id` 为空且响应头缺失
+  （违反契约 §4「任何错误体都含 request_id 且与响应头一致」）。改为优先读
+  `request.state`，并在 `error_response` 补同名响应头
+- **控制台 demo 模式回归**：未绑定 Project Key 的门控改造让 `playgroundClient` 在 demo 模式
+  恒为 null，对话页 submit 被静默吞掉且绑定引导恒显；修复为绑定后回落演示数据源
+- **控制台静态托管 SPA 回退**：前端路由（`/playground` 等）直连/刷新 404 —— `_mount_console`
+  对 GET/HEAD 的 404 回退 `index.html`，`/v1` 前缀除外（API 404 仍是契约错误信封）
+- **前端 typecheck 红线**：补齐 `ApiClient` 接口的 `renameSession/deleteSession` 定义与
+  `Layout` 未使用变量，恢复 `npm run typecheck` 绿灯
+- **Docker 构建**：builder 阶段补 `COPY sdk`（uv workspace 成员 `sdk/agentd_client` 解析失败）；
+  `NODE_IMAGE` ARG 移到第一个 `FROM` 之前的全局作用域（buildx 下 base name blank）
+- **CI**：补充 `web/package.json` 的 `typecheck` 脚本并清理误提交的扫描器状态
+- **备份恢复测试跨平台**：`run_script` 显式 `encoding="utf-8"`，修复 cp936/gbk 主机解码崩溃
+- **记忆提取 e2e 偶发**：旁路提取改为 await 后台任务集，消除全量负载下的轮询竞态
 
 ## [v0.1.0-rc2] - 2026-10-24
 
@@ -125,7 +186,7 @@ M3：平台 API + 鉴权 + 并发（对外的门面）。
 
 ### Added
 
-- 鉴权：`Authorization: Bearer agd_...` → project（每请求实时查库，撤销立即生效）；key 只存 sha256+前 12 位；管理员双通道（`AGENTD_ADMIN_KEY` 或 DB admin scope）
+- 鉴权：`Authorization: Bearer agd_...` → project（每请求实时查库，撤销立即生效）；key 只存 sha256+前 12 位；管理员双通道（`AGENTD_ADMIN_API_KEY` 或 DB admin scope）
 - 管理端点：`POST/GET /v1/admin/projects`、`POST/GET /v1/admin/keys`、`POST /v1/admin/keys/{id}/revoke`
 - 会话端点：`POST/GET /v1/sessions`、`GET /v1/sessions/{id}/messages`（seq 升序 + before_seq 分页 + has_more）
 - runs：`POST /v1/sessions/{id}/runs`（202 + `Idempotency-Key` 5 分钟窗口，迁移 002）、`GET /v1/runs/{id}`、`POST /v1/runs/{id}/cancel`；RunManager——per-session 串行（忙时 409）、全局+per-project 信号量（超并发保持 queued）、事件先落库再广播、优雅停机兜底

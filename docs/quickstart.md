@@ -72,15 +72,16 @@ curl -N -sS "$BASE/v1/runs/$RID/events" -H "Authorization: Bearer $KEY"
 
 | 能力 | 用法 |
 |---|---|
-| 历史消息 | `client.list_messages(session_id)`（seq 升序，`before_seq` 翻页） |
+| 历史消息 | `client.list_messages(session_id, limit=50, before_seq=None)`（seq 升序，返回 `{items, has_more}`；每条消息含 `tool_calls`，可据此重建历史工具调用） |
 | 取消 run | `client.cancel_run(run_id)`（终态后取消会 409） |
 | 断线续传 | `client.stream()` 自动带 Last-Event-ID 重连；增量不重放，以 `message.completed` 为准 |
-| 用量 | `client.usage(group_by="day"或"model", date_from="2026-10-01")` |
+| 用量 | `client.usage(group_by="day", date_from="2026-10-01", date_to="2026-10-31")`（`group_by` 取 `"day"` 或 `"model"`；日期参数是服务端字段名） |
 | 会话管理 | `client.rename_session(sid, title="新名字")` 改标题；`client.delete_session(sid)` 删除（204，级联清消息与 runs，用量记录保留） |
 | 选模型 | `POST /v1/sessions/{id}/runs` 带 `{"model": "..."}`；先 `GET /v1/models` 查可用值，传了不认识的模型得 400 `invalid_request`。**SDK 的 `create_run()` 暂不支持 `model` 形参**，需要时直接发 HTTP |
 | 错误 | 类型化异常：`AuthenticationError` / `RateLimitError(retry_after_s)` / `ModelError`…；`retryable` 的自动重试 |
 | 工具 | 平台内置 echo/get_time/read_file/write_file/edit_file/list_dir/web_fetch（平台还可挂 MCP 工具）；回答里 `tool.started/completed` 事件可见，`tool.completed` 带 `result` 输出预览 |
-| 长期记忆 | 仅 HTTP：`GET/POST /v1/memories`、`DELETE /v1/memories/{id}`（归档）；SDK 暂无对应方法 |
+| 长期记忆 | `client.create_memory(content="用户偏好深色主题")` 写入；`client.list_memories(status="active")` 列出（`status=None` 含 archived）；`client.archive_memory(mid)` 归档（软删，幂等）。project 作用域，跨 project 一律 404 |
+| 记忆的三个坑 | ① `status="archived"` 是**先取最近 limit 条再按状态过滤**，active 多时会漏，拿全请调大 `limit`；② 同内容 `create_memory` 不新建、返回**既有行**，HTTP 仍是 201，判断是否新建要比对 id；③ `limit` 越界或 content 为空/纯空白，SDK 本地抛 `ValidationError`、不发请求 |
 
 ## 5. 排障
 

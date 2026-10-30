@@ -37,10 +37,10 @@
 
 ## v0.2 Roadmap（优先级序）
 
-1. **MCP 支持**（外部工具生态，预期价值最高）
+1. ✅ **MCP 支持**（外部工具生态，预期价值最高）——Streamable HTTP 握手 + `tools/list` + `tools/call` 桥接、单服务器故障跳过，2026-10-24 完成（`58a96eb`），见 `docs/mcp.md`
 2. ✅ 多 provider（Anthropic 原生/Responses）+ 失败自动切换 + SSRF pinned transport（2026-10-25 完成）
 3. ✅ 记忆与自动整理（参考 nanobot Memory/Dream 思路，按需裁剪；2026-10-25 完成，LLM 语义合并留后续）
-4. ✅ 控制台完善（2026-10-25 两线合流：Markdown 渲染/Topics 重命名删除/用量明细+CSV/工具卡结果预览/Playwright 冒烟进 CI；移动端打磨与真实后端浏览器冒烟留后续）
-5. Postgres + 多实例（Repository 抽象已就位，压测触发时启动）
-6. 多通道接入（Telegram/Discord，产品需要时）
-7. PyPI 发布 SDK 与 agentd 主包
+4. ✅ 控制台完善（2026-10-25 两线合流：Markdown 渲染/Topics 重命名删除/用量明细+CSV/工具卡结果预览/Playwright 冒烟进 CI；2026-10-26 补移动端侧栏折叠与视觉统一；真实后端浏览器冒烟留后续）
+5. Postgres + 多实例（Repository 抽象已就位，压测触发时启动；**评估中，未落地**）
+6. 多通道接入（Telegram/Discord，产品需要时；**v0.2 不做**）
+7. PyPI 发布 SDK 与 agentd 主包（**进行中**）

@@ -1,12 +1,13 @@
 # 稳定性报告（M7 D5，v0.1.0-rc2）
 
 > 状态：**本地/CI 全绿**；「连续 5 天无 P0」与「成功率 >98%」需线上运行数据（部署后从 /metrics 与审计回填，见文末待填表）。
+> **时效说明**：本文数据为 M7 时点（2026-10-25）的证据快照，不随版本回改。v0.2 之后测试面与依赖面均已增长（含 MCP/多 provider/记忆/控制台新增用例），权威现状见 `CHANGELOG.md` 的 `[Unreleased]` 与 CI 实跑结果。
 
 ## 测试与门禁
 
-- **191 个自动化测试全绿**：unit 90 / integration 65 / security 36（CI 阻塞）；前端 vitest 5 例、tsc 零错
+- **191 个自动化测试全绿**（M7 时点口径）：unit 90 / integration 65 / security 36（CI 阻塞）；前端 vitest 5 例、tsc 零错
 - ruff + mypy(strict, 87 文件) 全绿；分支覆盖率 89%
-- CI（GitHub Actions）：lint → type → test(coverage) → web(typecheck/test/build) → docker build
+- CI（GitHub Actions）：lint → type → test(coverage) → web(typecheck/test/build) → docker build → console e2e smoke（v0.2-4 新增）
 
 ## 关键场景证据（均可复现）
 
@@ -23,7 +24,8 @@
 
 ## 已知限制（对外文档已注明）
 
-- SSE 续传不重放增量文本（以 message.completed 为准）；DNS rebinding 残余窗口（v0.2 pinned transport）；指标/限流为进程内存态（重启清零，单实例可接受）。
+- SSE 续传不重放增量文本（以 message.completed 为准）；指标/限流为进程内存态（重启清零，单实例可接受）。
+  ~~DNS rebinding 残余窗口（v0.2 pinned transport）~~ → **v0.2 已清偿**：`security/pinned.py` + `tests/security/test_pinned.py`。
 
 ## 线上运行数据（部署后回填）
 

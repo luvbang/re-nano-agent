@@ -1,6 +1,6 @@
 # SDK 指南（agentd-client）
 
-> Python ≥ 3.12。同步与异步同能力：会话（含重命名/删除）、流式 run、取消、用量、类型化错误、自动重试。
+> Python ≥ 3.12。同步与异步同能力：会话（含重命名/删除）、流式 run、取消、用量、长期记忆、类型化错误、自动重试。
 
 ## 安装
 
@@ -51,6 +51,8 @@ with Client("https://agent.example.com", api_key="agd_...") as client:
 ```
 
 同步实现：专属后台事件循环线程 + 线程安全队列交接 SSE；`close()` 可省略（daemon 线程）。
+
+两个客户端都支持上下文管理器：`async with AsyncClient(...)` / `with Client(...) as c:`，退出时自动 `aclose()`/`close()`。
 
 ## 会话管理
 
@@ -108,15 +110,52 @@ client.get_run(rid) / client.cancel_run(rid)             # 终态后取消得 40
 client.stream(rid)                                        # SSE 事件迭代器
 client.usage(group_by="day"|"model", date_from=..., date_to=...)
 client.models()
+client.list_memories(status=None, limit=100) / client.create_memory(content=...) / client.archive_memory(mid)
 ```
+
+## 长期记忆
+
+记忆是 **project 作用域**的：同一 project 的 key 共享，跨 project 互不可见（跨 project 归档一律 404）。`AsyncClient` 与 `Client` 三个方法签名一致。
+
+```python
+from agentd_client import Client, MemoryStatus
+
+with Client("https://agent.example.com", api_key="agd_...") as client:
+    row = client.create_memory(content="用户偏好深色主题")
+    print(row["id"], row["status"])                        # mem_xxx active
+
+    rows = client.list_memories(limit=100)                 # status=None → 全部状态（含 archived）
+    actives = client.list_memories(status="active", limit=50)
+
+    client.archive_memory(row["id"])                       # 归档（软删），返回 {}
+```
+
+```python
+# 签名（AsyncClient / Client 一致）
+list_memories(*, status: MemoryStatus | None = None, limit: int = 100) -> list[dict[str, Any]]
+create_memory(*, content: str) -> dict[str, Any]
+archive_memory(memory_id: str) -> dict[str, Any]
+MemoryStatus = Literal["active", "archived"]               # 从 agentd_client 导出
+```
+
+### 三个反直觉的点
+
+1. **`status="archived"` 有窗口陷阱**：服务端是**先取最近 `limit` 条、再按状态过滤**，不是先过滤后取。active 记忆多时 archived 会被挤出窗口拿不全——要拿全 archived 就把 `limit` 调大（上限 200），或分页多次取。
+2. **`create_memory` 的去重无法从响应区分**：同 project 同内容（`strip()` 后比较）不会新建，只 bump `last_seen_at` 并返回**既有行**（id 相同），但 HTTP 仍是 `201`。要判断「是否真的新建」只能自己比对 id 或先 `list_memories()`。
+3. **两处本地预校验，不发请求**：`limit` 不在 1..200、或 `content` 为空/纯空白，SDK 直接抛 `ValidationError`（省一次 400 往返）。`content` 超过 2000 字由服务端拒绝，同样得到 `ValidationError`。
+
+其它语义：`archive_memory()` 对已归档 id 幂等（204 → 返回 `{}`）；不存在的 id（或跨 project）抛 `NotFoundError`，**不可重试**。归档后记忆不再注入上下文，但记录保留供 Dream 与审计追溯。
 
 ## 尚未覆盖的能力
 
-长期记忆（`/v1/memories`）**目前只有 HTTP 端点，SDK 没有对应方法**——不要去找 `client.memories` / `client.create_memory`，它们不存在。需要时按 `docs/api-reference.md` 的记忆段直接发 HTTP，或等后续版本补 SDK 封装。同理，MCP 是服务端配置（`AGENTD_MCP_SERVERS`），SDK 侧不需要也不存在开关。
+MCP 是**服务端配置**（`AGENTD_MCP_SERVERS`），SDK 侧不需要也不存在开关——这是设计如此，不是缺口。
+
+其余已知缺口：`create_run()` 仍没有 `model` 形参（请求级模型覆盖需直接发 HTTP，见上节「选模型」）；`agentd purge` / `agentd dream` 是运维 CLI，没有对应的 SDK 封装。
 
 ## 排障
 
 - 同一 session 并发 run → `409 ConflictError`（per-session 串行），等上一轮完成
 - 长输入被拒 → `413`（默认 1MB 上限）
 - 传了 `model` 但返回 400 `invalid_request` → 与平台模型不一致，用 `client.models()` 取可用值
-- 完整可运行示例见仓库 `examples/sdk_quickstart.py`（异步）与 `examples/sdk_sync.py`
+- 记忆相关：`ValidationError` 是 SDK 本地抛的（`limit` 越界 / content 为空），压根没发请求；`NotFoundError` 表示该 id 不存在或属于别的 project（归档幂等，重复归档不报错）
+- 完整可运行示例见仓库 `examples/sdk_quickstart.py`（异步，用 `async with`）与 `examples/sdk_sync.py`

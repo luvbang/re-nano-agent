@@ -9,12 +9,14 @@
 ## v0.2 能力一览（进行中）
 
 - **多 provider + 故障切换**：`AGENTD_LLM_PROVIDER` 支持 `openai`（chat.completions）/ `responses`（Responses API）/ `anthropic`（Messages 原生）；`AGENTD_LLM_FALLBACKS` 配置备选链，主 provider 重试耗尽且未输出任何 delta 时整链切换（已输出不切换，杜绝重复输出）。
+- **SSRF pinned transport**：`web_fetch` 把校验阶段解析到的公网 IP 钉进连接层（TLS SNI/证书校验与 Host 头保持原主机名），消除「校验时公网、连接时被 DNS rebinding 到内网」的 TOCTOU 窗口（M2 技术债清偿，`security/pinned.py`）。
 - **MCP 工具**：`AGENTD_MCP_SERVERS`（JSON）挂接任意 MCP 服务器，Streamable HTTP 握手 + `tools/list` + `tools/call`，走统一工具管线（超时/审计/截断），单服务器故障跳过不影响启动。见 [`docs/mcp.md`](docs/mcp.md)。
 - **长期记忆与 Dream**：`memories` 表 + `MemoryService`，project 作用域；run 组装上下文时按 score/last_seen 预算内注入 system，run 成功后旁路自动提取（默认关，失败不影响 run）；`/v1/memories` GET/POST/DELETE（归档即软删）；`agentd dream` 规则版整理。
+- **会话重命名/删除**：`PATCH /v1/sessions/{id}` 改 title（1–200 字符）、`DELETE /v1/sessions/{id}` 删会话（204，级联清消息与 runs，usage 记录保留）；SDK 对应 `rename_session/delete_session`，控制台侧栏 Topics 入口。
 - **请求级模型选择**：`POST /v1/sessions/{id}/runs` 支持 `model` 字段，贯通到 `provider.chat(model=...)` 并落到 run 档与 usage 维度；未知模型 400；控制台 composer 有 chip 选择器。
 - **数据保留**：`agentd purge --project <id> [--yes]` 级联清理 project 数据、审计脱钩保留；`DELETE /v1/sessions/{id}` 级联清会话数据而保留用量账。
 - **契约守护**：`tests/fixtures/openapi.json` 快照测试，端点/字段变更必须显式 `--regen` 才能通过。
-- 控制台重做（枫叶品牌化、侧栏 Topics 工作台、Playground 重写、项目 key 门控、消息 Markdown 与悬停复制、视觉统一与移动端侧栏折叠）。
+- **控制台重做**（枫叶品牌化、侧栏 Topics 工作台、Playground 重写、项目 Key 门控、消息 Markdown 与悬停复制、视觉统一与移动端侧栏折叠）：另有工具卡「参数 + 结果」两段式预览（`tool.completed.result`，2000 字符封顶）、用量明细表 + CSV 导出（RFC 4180 + UTF-8 BOM）、Playwright demo 模式冒烟进 CI（`smoke` job，3 例）。
 
 ## 快速开始（新克隆）
 
@@ -46,7 +48,10 @@ make install && make migrate && make dev
 make check        # ruff + mypy + pytest
 ```
 
-Windows 无 `make` 时用 `uv run python scripts/tasks.py <task>`，任务名与 Makefile 一致（`install/migrate/dev/serve/test/lint/type/check/up/down/deploy/tag`）。
+Windows 无 `make` 时用 `uv run python scripts/tasks.py <task>`。`scripts/tasks.py` 的任务是
+`install/migrate/dev/serve/test/lint/type/check/docker-build/up/down/tag`（无 `deploy`/`logs`，
+这两个只在 Makefile 里；`docker-build` 只在 tasks.py 里）。前端另有 `cd web && npm run
+typecheck|test|build|size|test:e2e`。
 
 容器化部署（多阶段非 root 镜像 + Caddy 自动 TLS）见 [`docs/deploy.md`](docs/deploy.md)；Docker Hub / ghcr.io 直连不通时用 `--build-arg` 换镜像源（`.env.example` 有现成示例）。
 
@@ -61,6 +66,8 @@ Windows 无 `make` 时用 `uv run python scripts/tasks.py <task>`，任务名与
 | 提交前全量 | `make check` | `uv run python scripts/tasks.py check` |
 | 起容器（app + Caddy） | `make up` | `docker compose up -d --build` |
 | 打里程碑 tag | `make tag VERSION=v0.1.0-m1` | `... tasks.py tag v0.1.0-m1` |
+| 前端体积预算 | — | `cd web && npm run size`（gzip 逐块累加，当前约 155KB / 预算 250KB） |
+| 控制台 e2e 冒烟 | — | `cd web && npm run test:e2e`（Playwright，demo 模式离线全链路） |
 
 CLI 子命令（`uv run agentd <cmd>`）：`migrate`（迁移）、`serve`（起服务）、`chat`（终端对话演示）、`purge`（按 project 清数据，v0.2）、`dream`（记忆整理，v0.2）、`version`（版本与配置）。
 

@@ -74,7 +74,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-回滚：把 `AGENTD_IMAGE_TAG` 改回上一版本并 `docker compose up -d`（镜像需已推送；M5 落 CI 推送）。
+回滚：最稳的是 `git checkout <上一 tag> && docker compose up -d --build` 从源码重建。若你们的 registry 里推过镜像，也可把 `AGENTD_IMAGE_TAG` 改回上一版本再 `docker compose up -d`（**注意：CI 目前不推送镜像**，见 §9）。
 
 ## 7. 网络受限时用镜像源构建（无需改 daemon.json）
 
@@ -113,11 +113,16 @@ docker compose up -d --build                 # app healthy → caddy 启动
 curl -sk https://localhost:18443/healthz      # 经 Caddy 的 HTTPS 200，带安全响应头
 ```
 
-## 9. 待补齐（M5）
+## 9. 后续补齐
 
-- 每日备份（SQLite Online Backup + workspace 打包）与 `restore.sh` 演练
-- `/metrics` 与告警
-- CI 推送镜像到 registry 并支持 `AGENTD_IMAGE_TAG` 回滚
+M5 已补齐（原待办）：
+
+- ✅ 每日备份（SQLite Online Backup + workspace 打包 + SHA256SUMS + `KEEP` 轮转）与 `deploy/restore.sh` 演练（`test_backup_restore.py` 自动化）
+- ✅ `/metrics`（Prometheus 文本，需管理员 Bearer）与最小告警 `scripts/health_watch.py`
+
+仍未做：
+
+- ☐ CI 推送镜像到 registry：`.github/workflows/ci.yml` 的 `image` job 目前 `push: false`（只验证能否构建），`publish` job 仍是注释状态。因此 §6 的「回滚 = 改 `AGENTD_IMAGE_TAG`」**只在本机或自建 registry 手工 push 后成立**；最简替代是回滚时 `git checkout <上一 tag> && docker compose up -d --build` 从源码重建。
 
 ## 10. 尚未验收：真实 VPS 与域名
 

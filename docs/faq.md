@@ -25,7 +25,7 @@ v0.1 内置：echo、get_time、read_file/write_file/edit_file/list_dir（锁在
 v0.1 是单管理员自托管：project 做数据隔离（key 绑 project，跨 project 一律 404），没有用户体系与计费。对外卖服务场景 v0.2 再议。
 
 **Q：并发上限？**
-单实例 SQLite：全局 8 / 单 project 4 个并发 run（可配），超了排队；同 session 串行（忙时 409）。20 并发压测无 5xx（M3 证据）。扛不住时 v0.2 迁 Postgres（Repository 抽象已留）。
+单实例 SQLite：全局 8 / 单 project 4 个并发 run（`AGENTD_RUN_GLOBAL_CONCURRENCY` / `AGENTD_RUN_PROJECT_CONCURRENCY`，可配），超了排队（保持 `queued`）；同 session 串行（忙时 409）。另有全局 RPM 桶 `AGENTD_RATELIMIT_GLOBAL_PER_MIN`（默认 240）与 per-key RPM。20 并发压测无 5xx（M3 证据）。扛不住时迁 Postgres + 多实例（v0.2 路线图第 5 项，Repository 抽象已就位）。
 
 **Q：控制台怎么开？**
 镜像自带（构建时打进 `/home/agentd/web/dist`）；本地开发 `web/` 下 `npm run dev`（Vite 代理到 :8000）或 `uv run python scripts/serve_fake.py` 离线体验。登录用管理员 key；Playground 另需项目 key（Keys 页一键创建绑定）。
@@ -34,4 +34,4 @@ v0.1 是单管理员自托管：project 做数据隔离（key 绑 project，跨 
 `git pull && docker compose up -d --build`（entrypoint 自动迁移）；回滚 checkout 上一 tag 重建。升级前先跑 backup.sh。
 
 **Q：SDK 什么时候发 PyPI？**
-v0.1-rc 阶段用 git 子目录安装（见 quickstart）；v0.1.0 正式发布时随主包发 PyPI。
+现在仍是仓库内 workspace 成员，用 git 子目录安装（见 quickstart）。PyPI 发布是 v0.2 路线图第 7 项，进行中（打包元数据与 sdist 白名单正在补齐）；发布前请继续用 git 子目录安装。

@@ -30,5 +30,5 @@
 - ✅ 文档集：quickstart / sdk-guide / api-reference / faq / deploy / ops / runbook / security-checklist / perf-baseline / stability-report
 - ✅ 2 个可运行示例（examples/）+ smoke.sh + loadtest.py + perf.py
 - ☐ CHANGELOG 定稿 + v0.1.0 tag + 镜像 tag（本清单全绿后）
-- ☐ 隐私/数据保留说明上线页脚（数据默认保留 90 天，删除命令 M8 前补 v0.1.0 内：`docker exec … python -m agentd.cli purge --project <id>` 若未实现则写明联系管理员）
+- ☐ 隐私/数据保留说明上线页脚。**删除命令已实装**（v0.2，`58a96eb`）：`docker exec … python -m agentd.cli purge --project <id> [--yes]`，用法与级联范围见 `docs/operations.md` §数据保留与删除。注意「数据默认保留 90 天」目前只是**记忆陈旧阈值**（`AGENTD_MEMORY_STALE_DAYS`，供 `agentd dream` 归档判定），**不是全库保留策略**——页脚措辞别把两者混为一谈。
 - ☐ 支持渠道（公告中填写）

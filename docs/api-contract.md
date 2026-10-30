@@ -6,7 +6,7 @@
 ## 1. 认证与资源模型
 
 - 请求头：`Authorization: Bearer agd_<key>`。
-- key 绑定唯一 project；服务端只存 `sha256(key)` + 前 8 位 prefix（展示用）。
+- key 绑定唯一 project；服务端只存 `sha256(key)` + 前 12 位 prefix（展示用）。
 - 所有业务资源嵌套在 project 下：`/v1/sessions`、`/v1/runs`、`/v1/usage`。
 - 管理操作（创建/撤销 key）用管理员 key（环境变量或独立 scope），v0.1 不做用户体系。
 - 每个请求可带 `X-Request-Id`；未带则服务端生成 `req_<hex>`，响应头回显，日志与错误体贯穿。
@@ -18,19 +18,28 @@ POST   /v1/sessions                       # {external_user_id?, metadata?, title
 GET    /v1/sessions/{id}                  # 会话信息
 PATCH  /v1/sessions/{id}                  # {title} 重命名 -> {id, ...}
 DELETE /v1/sessions/{id}                  # 204；级联删消息与 runs，用量记录保留
-GET    /v1/sessions/{id}/messages         # ?limit=&before= 分页
+GET    /v1/sessions/{id}/messages         # ?limit=&before_seq= 分页
 POST   /v1/sessions/{id}/runs             # {input, stream?, model?, tools?, metadata?}
                                           # -> 202 {run_id}（配合 events 端点）
 GET    /v1/runs/{id}                      # {status, usage, error, ...}
 GET    /v1/runs/{id}/events               # SSE；支持 Last-Event-ID
 POST   /v1/runs/{id}/cancel               # 取消
 GET    /v1/models                         # 可用模型与能力
-GET    /v1/usage                          # ?from=&to=&group_by=model|day
+GET    /v1/usage                          # ?group_by=day|model&date_from=&date_to=
 GET    /v1/admin/keys                     # 管理员：创建/撤销 key
 GET    /healthz  /readyz  /metrics        # 运维
 ```
 
+> 参数名以实现为准（M0 草案里的 `before` / `from` / `to` 落地时定为 `before_seq` /
+> `date_from` / `date_to`，见 `src/agentd/api/routes/sessions.py` 与 `routes/platform.py`）。
+> `tools` 为契约保留位，当前 `RunCreate` 未接收该字段（工具集由服务端配置决定）。
+
 M0 已实现：`/healthz`、`/readyz`。M3 已实现：`/v1/sessions*`、`/v1/sessions/{id}/runs`、`/v1/runs/{id}`、`/v1/runs/{id}/events`、`/v1/runs/{id}/cancel`、`/v1/models`、`/v1/usage`、`/v1/admin/projects`、`/v1/admin/keys`、`/v1/admin/keys/{id}/revoke`、`/v1/admin/stats`（本节为 M3 新增的管理端点）。M4 落地 SDK；未配置模型 key 时 runs 相关端点返回 502 model_error。
+
+v0.2 增量（只加不破）：`PATCH/DELETE /v1/sessions/{id}`（会话重命名/删除）、
+`GET/POST /v1/memories` 与 `DELETE /v1/memories/{id}`（长期记忆）、run 创建时的
+请求级 `model`、`messages[].tool_calls` 字段、`tool.completed.result` 事件字段。
+全量清单与错误码见 `docs/api-reference.md`（含实际路由与状态码）。
 
 ### 2.1 运维端点（M0 已实现）
 
@@ -61,7 +70,8 @@ DELETE /v1/memories/{id}
 ```
 
 注入语义：run 组装上下文时 active 记忆按 score/last_seen 排序、预算内并入
-system（见 docs/architecture.md §6.4 的记忆段）。整理语义：`agentd dream`
+system（实现见 `src/agentd/services/memory.py` 的 `prompt_block()`；端点与错误码的
+速查见 `docs/api-reference.md` §长期记忆）。整理语义：`agentd dream`
 做规则版去重与陈旧归档（LLM 语义合并留待后续）。
 
 ## 3. SSE 事件（对外契约）
