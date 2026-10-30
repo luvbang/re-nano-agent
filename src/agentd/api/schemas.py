@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class HealthResponse(BaseModel):
@@ -69,6 +69,20 @@ class MessagePage(BaseModel):
 
 class MemoryCreate(BaseModel):
     content: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("content")
+    @classmethod
+    def _content_not_blank(cls, value: str) -> str:
+        """全空白 content 在 schema 层就拒掉（400 invalid_request）。
+
+        原先只靠 `min_length=1` 挡不住 "   "：长度合规、strip 后为空，一路落到
+        MemoryService.add 抛裸 ValueError，被兜底 handler 变成 500。strip 后的值
+        直接作为规范化输入保存（与 PATCH /v1/sessions 对 title 的处理一致）。
+        """
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("content 不能为空或全空白")
+        return stripped
 
 
 class MemoryOut(BaseModel):

@@ -7,14 +7,32 @@
 
 from __future__ import annotations
 
+import json
+
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-_TOO_LARGE_JSON = (
-    b'{"error":{"code":"invalid_request","message":"request body too large",'
-    b'"retryable":false,"request_id":""}}'
-)
+from agentd.api.middleware import REQUEST_ID_HEADER, resolve_request_id
+
 _FINAL_MESSAGE: Message = {"type": "http.request", "body": b"", "more_body": False}
+
+
+def _request_id_for(scope: Scope) -> str:
+    """413 也要带 request_id（契约 §4）；本中间件在 RequestIDMiddleware 之外，自行解析。"""
+    return resolve_request_id(Headers(scope=scope).get(REQUEST_ID_HEADER))
+
+
+def _too_large_body(request_id: str) -> bytes:
+    return json.dumps(
+        {
+            "error": {
+                "code": "invalid_request",
+                "message": "request body too large",
+                "retryable": False,
+                "request_id": request_id,
+            }
+        }
+    ).encode()
 
 
 class BodySizeLimitMiddleware:
@@ -27,15 +45,18 @@ class BodySizeLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # 本中间件在 RequestIDMiddleware 之外，届时 request_id 还没生成；自行解析一份，
+        # 保证 413 也满足契约 §4（错误体 request_id 与响应头一致且非空）。
+        request_id = _request_id_for(scope)
         content_length = Headers(scope=scope).get("content-length")
         if content_length is not None:
             try:
                 declared = int(content_length)
             except ValueError:
-                await self._reject(send)  # 非法 Content-Length 一律拒绝
+                await self._reject(send, request_id)  # 非法 Content-Length 一律拒绝
                 return
             if declared > self.max_bytes:
-                await self._reject(send)
+                await self._reject(send, request_id)
                 return
             await self.app(scope, receive, send)
             return
@@ -51,7 +72,7 @@ class BodySizeLimitMiddleware:
             if message["type"] == "http.request":
                 total += len(message.get("body", b""))
                 if total > self.max_bytes:
-                    await self._reject(send)
+                    await self._reject(send, request_id)
                     return
                 buffered.append(message)
                 if not message.get("more_body"):
@@ -69,15 +90,17 @@ class BodySizeLimitMiddleware:
 
         await self.app(scope, replay, send)
 
-    async def _reject(self, send: Send) -> None:
+    async def _reject(self, send: Send, request_id: str = "") -> None:
+        body = _too_large_body(request_id)
         await send(
             {
                 "type": "http.response.start",
                 "status": 413,
                 "headers": [
                     (b"content-type", b"application/json"),
-                    (b"content-length", str(len(_TOO_LARGE_JSON)).encode()),
+                    (b"content-length", str(len(body)).encode()),
+                    (REQUEST_ID_HEADER.lower().encode(), request_id.encode()),
                 ],
             }
         )
-        await send({"type": "http.response.body", "body": _TOO_LARGE_JSON})
+        await send({"type": "http.response.body", "body": body})

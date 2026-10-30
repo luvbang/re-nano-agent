@@ -2,10 +2,13 @@
 # 全链路冒烟（M3 D5）：对着运行中的服务用 curl 走完 建项目→发 key→建会话→跑 run→SSE→用量。
 # 用法：BASE_URL=http://127.0.0.1:8000 ADMIN_KEY=agd_xxx bash scripts/smoke.sh
 # 依赖：curl、python（用于解析 JSON，避免 jq）。
+# 注意：本脚本的 ADMIN_KEY 是「传进脚本」的变量名（可自定义），
+# 服务端读的是 AGENTD_ADMIN_API_KEY（config.py: admin_api_key + AGENTD_ 前缀），
+# 两者名字不同别搞混——服务端设错名字会读不到值。
 set -euo pipefail
 
 BASE="${BASE_URL:-http://127.0.0.1:8000}"
-ADMIN="${ADMIN_KEY:?请通过环境变量提供 ADMIN_KEY（服务端的 AGENTD_ADMIN_KEY）}"
+ADMIN="${ADMIN_KEY:?请通过环境变量提供 ADMIN_KEY（服务端的 AGENTD_ADMIN_API_KEY）}"
 AUTH="Authorization: Bearer ${ADMIN}"
 
 jsonget() { python -c "import json,sys;print(json.load(sys.stdin)[sys.argv[1]])" "$1"; }

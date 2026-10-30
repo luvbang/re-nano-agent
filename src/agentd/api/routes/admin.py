@@ -1,6 +1,6 @@
 """管理端点（M3 D1）：/v1/admin/projects 与 /v1/admin/keys。
 
-管理员 = env 管理员 key（AGENTD_ADMIN_KEY）或 DB 中 scopes 含 admin 的 key。
+管理员 = env 管理员 key（AGENTD_ADMIN_API_KEY）或 DB 中 scopes 含 admin 的 key。
 创建 key 的明文只在创建响应里出现一次；撤销立即生效（每个请求实时查库）。
 """
 
@@ -94,9 +94,7 @@ async def create_project(
     row = await ProjectRepository(db).create(name=body.name, workspace_path="pending")
     assert settings.workspace_root is not None
     workspace = settings.workspace_root / str(row["id"])
-    await db.execute(
-        "UPDATE projects SET workspace_path = ? WHERE id = ?", (str(workspace), row["id"])
-    )
+    await ProjectRepository(db).set_workspace_path(str(row["id"]), str(workspace))
     row["workspace_path"] = str(workspace)
     await AuditRepository(db).append(
         action="project.created", actor="admin", target=str(row["id"]),
@@ -108,7 +106,7 @@ async def create_project(
 @router.get("/projects", response_model=list[ProjectOut], summary="project 列表（管理员）")
 async def list_projects(auth: AdminAuth, db: DbDep) -> list[ProjectOut]:
     del auth
-    rows = await db.fetch_all("SELECT * FROM projects ORDER BY created_at")
+    rows = await ProjectRepository(db).list_all()
     return [_project_out(row) for row in rows]
 
 
@@ -145,7 +143,7 @@ async def create_key(
 @router.get("/keys", response_model=list[ApiKeyOut], summary="key 列表（管理员，不含明文）")
 async def list_keys(auth: AdminAuth, db: DbDep) -> list[ApiKeyOut]:
     del auth
-    rows = await db.fetch_all("SELECT * FROM api_keys ORDER BY created_at")
+    rows = await ApiKeyRepository(db).list_all()
     return [_key_out(row) for row in rows]
 
 
@@ -157,7 +155,7 @@ async def list_keys(auth: AdminAuth, db: DbDep) -> list[ApiKeyOut]:
 )
 async def revoke_key(key_id: str, auth: AdminAuth, db: DbDep) -> ApiKeyOut:
     del auth
-    row = await db.fetch_one("SELECT * FROM api_keys WHERE id = ?", (key_id,))
+    row = await ApiKeyRepository(db).get(key_id)
     if row is None:
         raise AppError(ErrorCode.NOT_FOUND, f"key 不存在：{key_id}")
     if row["revoked_at"] is None:
@@ -166,6 +164,6 @@ async def revoke_key(key_id: str, auth: AdminAuth, db: DbDep) -> ApiKeyOut:
             action="key.revoked", actor="admin", project_id=str(row["project_id"]),
             target=key_id, detail={"prefix": row["key_prefix"]},
         )
-    fresh = await db.fetch_one("SELECT * FROM api_keys WHERE id = ?", (key_id,))
+    fresh = await ApiKeyRepository(db).get(key_id)
     assert fresh is not None
     return _key_out(fresh)

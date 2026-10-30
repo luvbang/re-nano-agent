@@ -12,6 +12,7 @@ from agentd.api.deps import DbDep, SettingsDep
 from agentd.api.metrics import Metrics
 from agentd.api.schemas import ErrorEnvelope, HealthResponse, ReadyResponse
 from agentd.config import APP_VERSION
+from agentd.storage.repositories import ping
 
 router = APIRouter(tags=["ops"])
 
@@ -32,7 +33,7 @@ async def healthz(request: Request) -> HealthResponse:
 )
 async def readyz(db: DbDep) -> ReadyResponse | JSONResponse:
     try:
-        await db.fetch_one("SELECT 1 AS ok")
+        await ping(db)
     except Exception:
         return JSONResponse(
             status_code=503, content={"status": "not_ready", "checks": {"db": "unavailable"}}

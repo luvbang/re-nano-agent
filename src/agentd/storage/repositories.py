@@ -14,12 +14,40 @@ def new_id(prefix: str) -> str:
     return f"{prefix}_{secrets.token_hex(8)}"
 
 
+async def ping(db: Database) -> None:
+    """连通性探针（``/readyz`` 用）：任一 dialect 都能表达的最小查询。"""
+    await db.fetch_one("SELECT 1 AS ok")
+
+
 class Repository:
     def __init__(self, db: Database) -> None:
         self.db = db
 
 
 class ProjectRepository(Repository):
+    # purge 前置统计：表名 → 计数 SQL（按删除级联顺序展示，dict 保序）
+    _CASCADE_COUNT_SQL: tuple[tuple[str, str], ...] = (
+        ("sessions", "SELECT COUNT(*) n FROM sessions WHERE project_id = ?"),
+        ("runs", "SELECT COUNT(*) n FROM runs WHERE project_id = ?"),
+        (
+            "messages",
+            "SELECT COUNT(*) n FROM messages WHERE session_id IN"
+            " (SELECT id FROM sessions WHERE project_id = ?)",
+        ),
+        ("usage_records", "SELECT COUNT(*) n FROM usage_records WHERE project_id = ?"),
+        ("memories", "SELECT COUNT(*) n FROM memories WHERE project_id = ?"),
+        (
+            "tool_calls",
+            "SELECT COUNT(*) n FROM tool_calls WHERE run_id IN"
+            " (SELECT id FROM runs WHERE project_id = ?)",
+        ),
+        (
+            "run_events",
+            "SELECT COUNT(*) n FROM run_events WHERE run_id IN"
+            " (SELECT id FROM runs WHERE project_id = ?)",
+        ),
+    )
+
     async def create(self, *, name: str, workspace_path: str) -> dict[str, Any]:
         project_id = new_id("p")
         await self.db.execute(
@@ -41,6 +69,27 @@ class ProjectRepository(Repository):
         if row is not None:
             return row
         return await self.create(name=name, workspace_path=workspace_path)
+
+    async def list_all(self) -> list[dict[str, Any]]:
+        return await self.db.fetch_all("SELECT * FROM projects ORDER BY created_at")
+
+    async def set_workspace_path(self, project_id: str, workspace_path: str) -> int:
+        """落定 workspace 目录（创建时先占名、建目录后回填，见 admin 路由）。"""
+        return await self.db.execute(
+            "UPDATE projects SET workspace_path = ? WHERE id = ?", (workspace_path, project_id)
+        )
+
+    async def cascade_counts(self, project_id: str) -> dict[str, int]:
+        """``agentd purge`` 的删除前统计（只读；返回各表的级联行数）。"""
+        counts: dict[str, int] = {}
+        for table, sql in self._CASCADE_COUNT_SQL:
+            row = await self.db.fetch_one(sql, (project_id,))
+            counts[table] = int(row["n"]) if row else 0
+        return counts
+
+    async def delete(self, project_id: str) -> int:
+        """删除 project（FK 级联清会话/run/消息/用量/工具调用/事件；审计 project_id 置空保留）。"""
+        return await self.db.execute("DELETE FROM projects WHERE id = ?", (project_id,))
 
 
 class ApiKeyRepository(Repository):
@@ -66,6 +115,12 @@ class ApiKeyRepository(Repository):
 
     async def get_by_hash(self, key_hash: str) -> dict[str, Any] | None:
         return await self.db.fetch_one("SELECT * FROM api_keys WHERE key_hash = ?", (key_hash,))
+
+    async def get(self, key_id: str) -> dict[str, Any] | None:
+        return await self.db.fetch_one("SELECT * FROM api_keys WHERE id = ?", (key_id,))
+
+    async def list_all(self) -> list[dict[str, Any]]:
+        return await self.db.fetch_all("SELECT * FROM api_keys ORDER BY created_at")
 
     async def revoke(self, key_id: str) -> int:
         return await self.db.execute(
@@ -125,6 +180,10 @@ class SessionRepository(Repository):
         return await self.create(
             project_id=project_id, title=title, external_user_id=external_user_id
         )
+
+    async def count_all(self) -> int:
+        row = await self.db.fetch_one("SELECT COUNT(*) AS n FROM sessions")
+        return int(row["n"]) if row else 0
 
     async def touch(self, session_id: str) -> None:
         await self.db.execute(
@@ -285,6 +344,16 @@ class RunRepository(Repository):
             " WHERE status IN ('queued', 'running')"
         )
 
+    async def count_by_status(self) -> dict[str, int]:
+        rows = await self.db.fetch_all("SELECT status, COUNT(*) AS n FROM runs GROUP BY status")
+        return {str(row["status"]): int(row["n"]) for row in rows}
+
+    async def add_cost(self, run_id: str, cost_usd: float) -> int:
+        """累加 run 的成本（用量记账时写，与 usage_records 同源）。"""
+        return await self.db.execute(
+            "UPDATE runs SET cost_usd = cost_usd + ? WHERE id = ?", (cost_usd, run_id)
+        )
+
 
 class ToolCallRepository(Repository):
     async def record(
@@ -442,6 +511,42 @@ class UsageRepository(Repository):
             (project_id,),
         )
         return row or {"n": 0, "input_tokens": 0, "output_tokens": 0}
+
+    async def totals(self) -> dict[str, Any]:
+        """全局用量汇总（管理端 /v1/admin/stats）。"""
+        row = await self.db.fetch_one(
+            "SELECT COUNT(*) AS n, COALESCE(SUM(input_tokens),0) AS input_tokens,"
+            " COALESCE(SUM(output_tokens),0) AS output_tokens,"
+            " COALESCE(SUM(cost_usd),0) AS cost_usd FROM usage_records"
+        )
+        return row or {"n": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0}
+
+    async def aggregate(
+        self,
+        project_id: str,
+        *,
+        group_by: str,
+        date_from: str | None = None,
+        date_to: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """按天或模型聚合（``/v1/usage``）。group_by 已由调用方用 Query 约束为 day|model。"""
+        column = "strftime('%Y-%m-%d', created_at)" if group_by == "day" else "model"
+        where = "project_id = ?"
+        params: list[Any] = [project_id]
+        if date_from:
+            where += " AND created_at >= ?"
+            params.append(date_from)
+        if date_to:
+            where += " AND created_at < date(?, '+1 day')"
+            params.append(date_to)
+        return await self.db.fetch_all(
+            f"SELECT {column} AS bucket, COUNT(*) AS runs,"
+            " COALESCE(SUM(input_tokens),0) AS input_tokens,"
+            " COALESCE(SUM(output_tokens),0) AS output_tokens,"
+            " COALESCE(SUM(cost_usd),0) AS cost_usd"
+            f" FROM usage_records WHERE {where} GROUP BY bucket ORDER BY bucket",
+            tuple(params),
+        )
 
 
 class MemoryRepository(Repository):

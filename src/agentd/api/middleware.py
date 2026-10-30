@@ -19,9 +19,16 @@ logger = logging.getLogger("agentd.access")
 
 _VALID_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
 
+REQUEST_ID_HEADER = "X-Request-Id"
+
+
+def resolve_request_id(incoming: str | None) -> str:
+    """复用客户端传来的合法 id，否则新生成（不安全字符一律替换，防日志注入）。"""
+    return incoming if incoming and _VALID_ID.match(incoming) else f"req_{secrets.token_hex(8)}"
+
 
 class RequestIDMiddleware:
-    def __init__(self, app: ASGIApp, *, header_name: str = "X-Request-Id") -> None:
+    def __init__(self, app: ASGIApp, *, header_name: str = REQUEST_ID_HEADER) -> None:
         self.app = app
         self.header_name = header_name
 
@@ -30,11 +37,11 @@ class RequestIDMiddleware:
             await self.app(scope, receive, send)
             return
 
-        incoming = Headers(scope=scope).get(self.header_name)
-        request_id = (
-            incoming if incoming and _VALID_ID.match(incoming) else f"req_{secrets.token_hex(8)}"
-        )
+        request_id = resolve_request_id(Headers(scope=scope).get(self.header_name))
         token = request_id_var.set(request_id)
+        # 同时写进 scope["state"]：ServerErrorMiddleware 层的兜底 handler 在用户中间件
+        # 之外执行，此时 contextvar 已被本中间件的 finally reset，只能靠 request.state 取。
+        scope.setdefault("state", {})["request_id"] = request_id
         status_code = 500
         started = time.perf_counter()
 
@@ -42,7 +49,10 @@ class RequestIDMiddleware:
             nonlocal status_code
             if message["type"] == "http.response.start":
                 status_code = int(message["status"])
-                MutableHeaders(scope=message).append(self.header_name, request_id)
+                # 错误响应（error_response）可能已自带同名头，避免重复
+                existing = MutableHeaders(scope=message)
+                if self.header_name.lower() not in {k.lower() for k in existing}:
+                    existing.append(self.header_name, request_id)
             await send(message)
 
         try:

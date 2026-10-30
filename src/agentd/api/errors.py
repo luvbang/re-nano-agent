@@ -19,6 +19,9 @@ from agentd.log import request_id_var
 
 logger = logging.getLogger(__name__)
 
+#: 响应头名（与 RequestIDMiddleware 的默认值一致；错误响应自带此头）
+REQUEST_ID_HEADER = "X-Request-Id"
+
 
 class ErrorCode(StrEnum):
     INVALID_REQUEST = "invalid_request"
@@ -67,6 +70,20 @@ class AppError(Exception):
         self.status_code, self.retryable = _SPEC[code]
 
 
+def _request_id_of(request: Request | None) -> str:
+    """取 request_id：优先 request.state（中间件入口写入），退化到 contextvar。
+
+    兜底 500 handler 在 ``ServerErrorMiddleware`` 层执行，位于用户中间件**之外**，
+    此时 ``RequestIDMiddleware`` 的 finally 已经把 contextvar reset 了——只读
+    contextvar 会拿到空串。request.state 挂在 scope 上，生命周期覆盖整条链路。
+    """
+    if request is not None:
+        request_id = getattr(request.state, "request_id", None)
+        if request_id:
+            return str(request_id)
+    return request_id_var.get() or ""
+
+
 def error_response(
     *,
     code: ErrorCode,
@@ -75,16 +92,24 @@ def error_response(
     retryable: bool | None = None,
     details: Any = None,
     headers: dict[str, str] | None = None,
+    request_id: str | None = None,
 ) -> JSONResponse:
     spec_status, spec_retryable = _SPEC[code]
+    resolved_id = request_id if request_id is not None else (request_id_var.get() or "")
     body: dict[str, Any] = {
         "code": code.value,
         "message": message,
         "retryable": spec_retryable if retryable is None else retryable,
-        "request_id": request_id_var.get() or "",
+        "request_id": resolved_id,
     }
     if details is not None:
         body["details"] = details
+    if resolved_id:
+        # 兜底 500 的响应由 ServerErrorMiddleware 直接发出，不经过用户中间件的
+        # send 包装器，这里补上同名响应头，保证「body.request_id == X-Request-Id」。
+        merged = dict(headers or {})
+        merged.setdefault(REQUEST_ID_HEADER, resolved_id)
+        headers = merged
     return JSONResponse(
         status_code=spec_status if status_code is None else status_code,
         content={"error": body},
@@ -112,7 +137,7 @@ _HTTP_STATUS_TO_CODE = {
 
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
-    async def _handle_app_error(_: Request, exc: AppError) -> JSONResponse:
+    async def _handle_app_error(request: Request, exc: AppError) -> JSONResponse:
         logger.warning(
             "request.failed", extra={"code": exc.code.value, "status": exc.status_code}
         )
@@ -123,29 +148,38 @@ def register_error_handlers(app: FastAPI) -> None:
             retryable=exc.retryable,
             details=exc.details,
             headers=exc.headers,
+            request_id=_request_id_of(request),
         )
 
     @app.exception_handler(RequestValidationError)
-    async def _handle_validation(_: Request, exc: RequestValidationError) -> JSONResponse:
+    async def _handle_validation(request: Request, exc: RequestValidationError) -> JSONResponse:
         # 只回显字段路径与原因，避免把整段输入写进响应
         details = [
             {"loc": list(err.get("loc", ())), "msg": err.get("msg", "")} for err in exc.errors()
         ]
         return error_response(
-            code=ErrorCode.INVALID_REQUEST, message="Request validation failed", details=details
+            code=ErrorCode.INVALID_REQUEST,
+            message="Request validation failed",
+            details=details,
+            request_id=_request_id_of(request),
         )
 
     @app.exception_handler(StarletteHTTPException)
-    async def _handle_http(_: Request, exc: StarletteHTTPException) -> JSONResponse:
+    async def _handle_http(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         code = _HTTP_STATUS_TO_CODE.get(exc.status_code, ErrorCode.INTERNAL)
         return error_response(
             code=code,
             message=str(exc.detail),
             status_code=exc.status_code,
             headers=dict(exc.headers or {}),
+            request_id=_request_id_of(request),
         )
 
     @app.exception_handler(Exception)
-    async def _handle_unexpected(_: Request, exc: Exception) -> JSONResponse:
+    async def _handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
         logger.exception("request.unhandled", extra={"error_type": type(exc).__name__})
-        return error_response(code=ErrorCode.INTERNAL, message="Internal server error")
+        return error_response(
+            code=ErrorCode.INTERNAL,
+            message="Internal server error",
+            request_id=_request_id_of(request),
+        )

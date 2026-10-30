@@ -11,7 +11,7 @@ import logging
 from typing import Any
 
 from agentd.storage.db import Database
-from agentd.storage.repositories import UsageRepository
+from agentd.storage.repositories import RunRepository, UsageRepository
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,7 @@ class UsageService:
     ) -> None:
         self.db = db
         self.repo = UsageRepository(db)
+        self.runs = RunRepository(db)
         self.price_table = price_table or {}
 
     def cost_usd(self, model: str, input_tokens: int, output_tokens: int) -> float:
@@ -74,7 +75,5 @@ class UsageService:
             output_tokens=output_tokens,
             cost_usd=cost,
         )
-        await self.db.execute(
-            "UPDATE runs SET cost_usd = cost_usd + ? WHERE id = ?", (cost, run_id)
-        )
+        await self.runs.add_cost(run_id, cost)
         return cost

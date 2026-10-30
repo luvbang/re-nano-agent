@@ -11,6 +11,7 @@ from agentd.cli import main as cli_main
 from agentd.config import Settings, get_settings
 from agentd.storage.db import Database
 from agentd.storage.repositories import (
+    MemoryRepository,
     MessageRepository,
     ProjectRepository,
     SessionRepository,
@@ -18,7 +19,7 @@ from agentd.storage.repositories import (
 
 
 async def seed(tmp_path: Path) -> tuple[str, str]:
-    """建两个 project：A 有消息+审计挂钩，B 只有空壳。返回 (A_id, B_id)。"""
+    """建两个 project：A 有消息+记忆+审计挂钩，B 只有空壳。返回 (A_id, B_id)。"""
     settings = Settings(
         env="test", data_dir=tmp_path, log_level="WARNING", log_json=False
     )
@@ -28,6 +29,10 @@ async def seed(tmp_path: Path) -> tuple[str, str]:
     b = await ProjectRepository(db).create(name="B", workspace_path="/tmp/b")
     session = await SessionRepository(db).create(project_id=str(a["id"]))
     await MessageRepository(db).append(str(session["id"]), role="user", text="数据")
+    # 记忆也挂在 project 上：003 的 FK 漏了 ON DELETE CASCADE，曾让 purge 直接炸
+    memories = MemoryRepository(db)
+    await memories.create(project_id=str(a["id"]), content="记忆一")
+    await memories.create(project_id=str(a["id"]), content="记忆二")
     await db.execute(
         "INSERT INTO audit_logs (id, project_id, actor, action)"
         " VALUES ('a_1', ?, 'test', 'purge.proof')",
@@ -76,8 +81,23 @@ async def test_purge_deletes_cascade_keeps_audit_and_others(
     assert await ProjectRepository(db).get(project_b) is not None
     messages = await db.fetch_one("SELECT COUNT(*) n FROM messages")
     assert messages is not None and int(messages["n"]) == 0
+    # 记忆必须一起级联清掉（003 漏 ON DELETE CASCADE 时 purge 会直接抛 FK 错误）
+    memories = await db.fetch_one("SELECT COUNT(*) n FROM memories")
+    assert memories is not None and int(memories["n"]) == 0
     audit = await db.fetch_one("SELECT project_id FROM audit_logs WHERE id = 'a_1'")
     assert audit is not None and audit["project_id"] is None  # 审计保留但脱钩
+    db.close()
+
+
+async def test_purge_reports_memories_in_plan(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """--yes 前打印的删除计划必须含 memories（曾漏报，用户以为清干净了）。"""
+    project_a, _b = await seed(tmp_path)
+    rc, db = await run_purge(tmp_path, "--project", project_a)
+    assert rc == 2
+    out = capsys.readouterr().out
+    assert "memories=2" in out, out
     db.close()
 
 

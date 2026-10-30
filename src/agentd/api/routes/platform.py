@@ -8,6 +8,7 @@ from fastapi import APIRouter, Query
 
 from agentd.api.auth import AdminAuth, ProjectAuth, RateLimitedAuth
 from agentd.api.deps import DbDep, SettingsDep
+from agentd.storage.repositories import RunRepository, SessionRepository, UsageRepository
 
 router = APIRouter(prefix="/v1", tags=["platform"])
 
@@ -31,22 +32,8 @@ async def usage(
 ) -> dict[str, Any]:
     del _limit
     project_id = str(auth.project["id"])
-    column = "strftime('%Y-%m-%d', created_at)" if group_by == "day" else "model"
-    where = "project_id = ?"
-    params: list[Any] = [project_id]
-    if date_from:
-        where += " AND created_at >= ?"
-        params.append(date_from)
-    if date_to:
-        where += " AND created_at < date(?, '+1 day')"
-        params.append(date_to)
-    rows = await db.fetch_all(
-        f"SELECT {column} AS bucket, COUNT(*) AS runs,"
-        " COALESCE(SUM(input_tokens),0) AS input_tokens,"
-        " COALESCE(SUM(output_tokens),0) AS output_tokens,"
-        " COALESCE(SUM(cost_usd),0) AS cost_usd"
-        f" FROM usage_records WHERE {where} GROUP BY bucket ORDER BY bucket",
-        tuple(params),
+    rows = await UsageRepository(db).aggregate(
+        project_id, group_by=group_by, date_from=date_from, date_to=date_to
     )
     return {
         "group_by": group_by,
@@ -66,19 +53,14 @@ async def usage(
 @router.get("/admin/stats", summary="系统状态（管理员）：run/会话/用量/DB 体量")
 async def admin_stats(auth: AdminAuth, db: DbDep, settings: SettingsDep) -> dict[str, Any]:
     del auth
-    runs_by_status = {
-        str(row["status"]): int(row["n"])
-        for row in await db.fetch_all(
-            "SELECT status, COUNT(*) AS n FROM runs GROUP BY status"
-        )
-    }
+    runs_by_status = await RunRepository(db).count_by_status()
     totals = await _all_usage_totals(db)
     db_path = settings.db_path
     db_size = db_path.stat().st_size if db_path and db_path.exists() else 0
-    sessions = await db.fetch_one("SELECT COUNT(*) AS n FROM sessions")
+    sessions = await SessionRepository(db).count_all()
     return {
         "runs_by_status": runs_by_status,
-        "sessions": int(sessions["n"]) if sessions else 0,
+        "sessions": sessions,
         "usage": totals,
         "db_size_bytes": db_size,
         "workspace_root": str(settings.workspace_root),
@@ -86,11 +68,7 @@ async def admin_stats(auth: AdminAuth, db: DbDep, settings: SettingsDep) -> dict
 
 
 async def _all_usage_totals(db: DbDep) -> dict[str, Any]:
-    row = await db.fetch_one(
-        "SELECT COUNT(*) AS n, COALESCE(SUM(input_tokens),0) AS input_tokens,"
-        " COALESCE(SUM(output_tokens),0) AS output_tokens,"
-        " COALESCE(SUM(cost_usd),0) AS cost_usd FROM usage_records"
-    )
+    row = await UsageRepository(db).totals()
     return {
         "records": int(row["n"]) if row else 0,
         "input_tokens": int(row["input_tokens"]) if row else 0,

@@ -2,6 +2,11 @@
 -- 作用域 = project（与 sessions/runs 一致的隔离边界）。
 -- status: active（注入上下文）/ archived（Dream 或手动归档，不再注入）。
 -- last_seen_at：注入/再次确认时刷新，Dream 据此判定陈旧。
+--
+-- 注意：本文件的 project_id 外键漏了 ON DELETE CASCADE（项目一有记忆，purge 的
+-- DELETE FROM projects 就会被 FK 挡住），已由 004_memories_fk 重建表修正。
+-- 保留原文是为了迁移可重放、不扰动既有库的 schema_version 序列；
+-- 新库按序执行 003 → 004 后即得到正确 schema。
 
 CREATE TABLE memories (
     id TEXT PRIMARY KEY,

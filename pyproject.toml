@@ -9,6 +9,7 @@ description = "Self-hostable agent runtime: HTTP/SSE API + Python SDK"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
+keywords = ["agentd", "llm", "agent", "sse", "fastapi", "self-hosted"]
 dependencies = [
   "fastapi>=0.115",
   "uvicorn[standard]>=0.30",
@@ -17,6 +18,26 @@ dependencies = [
   "pydantic-settings>=2.3",
   "tiktoken>=0.14.0",
 ]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/luvbang/re-nano-agent"
+Repository = "https://github.com/luvbang/re-nano-agent"
+Documentation = "https://github.com/luvbang/re-nano-agent/blob/main/docs/architecture.md"
+Issues = "https://github.com/luvbang/re-nano-agent/issues"
+Changelog = "https://github.com/luvbang/re-nano-agent/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = [
@@ -37,8 +58,13 @@ packages = ["src/agentd"]
 
 # sdist 白名单：仓库里还有 web/（node_modules 数千文件）、.agents/、var/ 等运行产物，
 # 默认「整仓打包」会让 sdist 膨胀到 30MB+ 且把无关工具链带给下游。只打包可构建的最小集。
+#
+# 用 only-include 而不是 include：hatchling 的 include/exclude 走 gitignore 语义，
+# 不含斜杠的模式匹配**任意层级**。因此 `include = ["LICENSE", "README.md"]` 会把
+# web/node_modules 下每个包的 LICENSE/README.md 一起收进来（v0.1 实测 579 条里 457 条
+# 是 node_modules 的许可证文件）。only-include 是显式路径白名单，只取列出的顶层路径。
 [tool.hatch.build.targets.sdist]
-include = [
+only-include = [
   "src/agentd",
   "tests",
   "sdk/agentd_client",
@@ -55,6 +81,9 @@ exclude = [
   "**/.mypy_cache",
   "**/.ruff_cache",
 ]
+# hatchling 会把最近的 .gitignore 无条件并进 exclude（含 git 语义），且默认按 VCS 过滤；
+# 显式关掉，sdist 内容完全由上面的白名单决定（与 sdk/agentd_client 的做法一致）。
+ignore-vcs = true
 
 [tool.uv.workspace]
 members = ["sdk/agentd_client"]

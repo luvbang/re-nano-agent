@@ -38,10 +38,8 @@ async def _build_run_manager(
     """无模型配置时返回 None（/v1/runs 返回 502 model_error，健康检查不受影响）。"""
     from agentd.providers.factory import build_provider
     from agentd.runtime.context import ContextBuilder
-    from agentd.tools.builtin import BUILTIN_TOOLS
-    from agentd.tools.filesystem import filesystem_tools
+    from agentd.tools.factory import build_tool_registry
     from agentd.tools.mcp import parse_mcp_config
-    from agentd.tools.registry import ToolRegistry
 
     if provider is None:
         provider, model = build_provider(settings)
@@ -50,20 +48,22 @@ async def _build_run_manager(
     else:
         model = getattr(provider, "model", "custom")
     assert settings.workspace_root is not None
-    tools = (
-        ToolRegistry(
-            tool_timeout_s=settings.run_tool_timeout_s,
-            overflow_root=settings.workspace_root / ".runs",
-        )
-        .register_all(BUILTIN_TOOLS)
-        .register_all(filesystem_tools(settings.workspace_root))
-    )
+    # 内置工具集走与 agentd chat 相同的装配路径（web_fetch 始终在；shell 按开关）
+    tools = build_tool_registry(settings)
     mcp_config = parse_mcp_config(settings.mcp_servers)
     if mcp_config:
         from agentd.tools.mcp import load_mcp_tools
 
+        # 同名冲突时让位给内置（docs/mcp.md 的对外承诺）：register 对重名抛 ValueError，
+        # 这里必须真的吞掉——此前只有注释没有 try，MCP 服务器工具撞名会让启动直接失败。
         for tool in await load_mcp_tools(mcp_config):
-            tools.register(tool)  # 同名冲突时让位给内置（register 抛错则跳过）
+            try:
+                tools.register(tool)
+            except ValueError:
+                logger.warning(
+                    "mcp.tool_skipped",
+                    extra={"tool": tool.definition.name, "reason": "duplicate_name"},
+                )
     from agentd.runtime.compaction import HistoryCompactor
     from agentd.services.memory import MemoryService
     from agentd.services.usage_service import UsageService, parse_price_table

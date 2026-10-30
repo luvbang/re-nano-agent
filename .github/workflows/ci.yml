@@ -53,6 +53,10 @@ jobs:
       - name: Build
         working-directory: web
         run: npm run build
+      # 体积预算进 CI：脚本超预算 exit 1，防止「文档写着 <250KB、实际早已超了」再次发生
+      - name: Bundle budget
+        working-directory: web
+        run: npm run size
 
   smoke:
     name: console e2e smoke (demo mode)

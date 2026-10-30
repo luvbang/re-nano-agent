@@ -87,6 +87,34 @@ async def test_memory_crud_and_dedupe(client: AsyncClient) -> None:
     assert gone.status_code == 204
 
 
+@pytest.mark.parametrize("blank", ["   ", "\t\n ", " \r\n\t "])
+async def test_blank_content_rejected_as_400(client: AsyncClient, blank: str) -> None:
+    """全空白 content 必须 400 invalid_request（曾漏到服务层抛 ValueError → 500）。
+
+    `min_length=1` 只挡空串，"   " 长度合规会在 MemoryService.add 里 strip 成空再抛裸
+    ValueError，被兜底 handler 变成 500 internal。schema 层校验是根治点。
+    """
+    _session_id, headers = await setup_session(client)
+    resp = await client.post("/v1/memories", json={"content": blank}, headers=headers)
+    assert resp.status_code == 400, resp.text
+    body = resp.json()["error"]
+    assert body["code"] == "invalid_request"
+    assert body["retryable"] is False
+    assert body["request_id"]
+    # 与 PATCH /v1/sessions 的全空白 title 行为一致（同为 400 invalid_request）
+    assert "content" in str(body.get("details"))
+
+
+async def test_content_is_stripped_before_store(client: AsyncClient) -> None:
+    """前后空白被规范化掉再落库（不是原样存 "  文本  "）。"""
+    _session_id, headers = await setup_session(client)
+    created = await client.post(
+        "/v1/memories", json={"content": "  带空白的记忆  "}, headers=headers
+    )
+    assert created.status_code == 201
+    assert created.json()["content"] == "带空白的记忆"
+
+
 async def test_memory_scoped_by_project(client: AsyncClient) -> None:
     admin = {"Authorization": f"Bearer {ADMIN_KEY}"}
     p1 = (await client.post("/v1/admin/projects", json={"name": "p1"}, headers=admin)).json()

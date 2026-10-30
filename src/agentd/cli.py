@@ -35,10 +35,7 @@ from agentd.runtime.events import (
 from agentd.services.chat_service import ChatService
 from agentd.storage.db import Database
 from agentd.storage.repositories import ProjectRepository, SessionRepository
-from agentd.tools.builtin import BUILTIN_TOOLS
-from agentd.tools.filesystem import filesystem_tools
-from agentd.tools.registry import ToolRegistry
-from agentd.tools.shell import ShellTool
+from agentd.tools.factory import build_tool_registry
 
 
 def _cmd_migrate(_: argparse.Namespace) -> int:
@@ -83,30 +80,18 @@ async def _cmd_purge(args: argparse.Namespace) -> int:
     )
     db.migrate()
     project_id = args.project
-    project = await ProjectRepository(db).get(project_id)
+    projects = ProjectRepository(db)
+    project = await projects.get(project_id)
     if project is None:
         print(f"project 不存在：{project_id}")
         return 1
-    counts: dict[str, int] = {}
-    for table, sql in (
-        ("sessions", "SELECT COUNT(*) n FROM sessions WHERE project_id = ?"),
-        ("runs", "SELECT COUNT(*) n FROM runs WHERE project_id = ?"),
-        ("messages", "SELECT COUNT(*) n FROM messages WHERE session_id IN"
-            " (SELECT id FROM sessions WHERE project_id = ?)"),
-        ("usage_records", "SELECT COUNT(*) n FROM usage_records WHERE project_id = ?"),
-        ("tool_calls", "SELECT COUNT(*) n FROM tool_calls WHERE run_id IN"
-            " (SELECT id FROM runs WHERE project_id = ?)"),
-        ("run_events", "SELECT COUNT(*) n FROM run_events WHERE run_id IN"
-            " (SELECT id FROM runs WHERE project_id = ?)"),
-    ):
-        row = await db.fetch_one(sql, (project_id,))
-        counts[table] = int(row["n"]) if row else 0
+    counts = await projects.cascade_counts(project_id)
     plan = ", ".join(f"{table}={n}" for table, n in counts.items())
     if not args.yes:
         print(f"将删除 project {project_id}（{project['name']}）：{plan}")
         print("审计日志保留（project_id 置空）。确认请加 --yes；建议先跑 deploy/backup.sh。")
         return 2
-    deleted = await db.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+    deleted = await projects.delete(project_id)
     db.close()
     print(f"purged project={project_id} rows(cascaded)≈{plan} projects_deleted={deleted}")
     print("提示：workspace 目录未动（如需彻底清理请手动删除其 workspace/<project_id>）。")
@@ -238,19 +223,7 @@ def _cmd_chat(args: argparse.Namespace) -> int:
             str(project["id"]), args.session, external_user_id="cli"
         )
         assert settings.workspace_root is not None  # _resolve_paths 已填充
-        registry = ToolRegistry(
-            tool_timeout_s=settings.run_tool_timeout_s,
-            overflow_root=settings.workspace_root / ".runs",
-        ).register_all(BUILTIN_TOOLS)
-        registry.register_all(filesystem_tools(settings.workspace_root))
-        if settings.run_shell_enabled:
-            registry.register(
-                ShellTool(
-                    settings.workspace_root,
-                    allowlist=settings.run_shell_allowlist.split(","),
-                    timeout_s=settings.run_shell_timeout_s,
-                )
-            )
+        registry = build_tool_registry(settings)
         context_builder = ContextBuilder(
             context_window=settings.llm_context_window, max_output=settings.llm_max_output
         )
