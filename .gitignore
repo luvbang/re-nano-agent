@@ -40,6 +40,13 @@ web/test-results/
 web/.taste-skill/
 .claude/
 
+# Postman 桌面版自动生成的本地工作区（含个人 workspace id）
+.postman/
+postman/
+
+# API 冒烟测试的临时响应体
+.api_smoke_body.*
+
 # 临时校验脚本（不提交）
 web/scripts/.tmp-*.mjs
 web/scripts/.tmp-*.js
